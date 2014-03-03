@@ -1,0 +1,246 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>SQL | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="关系代数与SQL。
+
+
+
+数学术语
+SQL术语
+
+
+
+
+关系Relation
+表Table
+
+
+属性
+列Colunm
+
+
+元组
+行Row
+
+
+
+CRUD: Create, Read, Update and Delete
+Join
+笛卡尔积
+
+(inner) join(,)
+outer join: 保">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="SQL"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-07-31T16:00:00.000Z"><a href="/2013/08/01/SQL/">Aug 1 2013</a></time>
+      
+      
+  
+    <h1 class="title">SQL</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>关系代数与SQL。</p>
+<table>
+<thead>
+<tr>
+<th>数学术语</th>
+<th>SQL术语</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>关系Relation</td>
+<td>表Table</td>
+</tr>
+<tr>
+<td>属性</td>
+<td>列Colunm</td>
+</tr>
+<tr>
+<td>元组</td>
+<td>行Row</td>
+</tr>
+</tbody>
+</table>
+<p>CRUD: Create, Read, Update and Delete</p>
+<h3>Join</h3>
+<p>笛卡尔积</p>
+<ul>
+<li>(inner) join(,)</li>
+<li>outer join: 保留未匹配的Row<ul>
+<li>left (outer) join: 左表保留</li>
+<li>right (outer) join: 右表保留</li>
+<li>full (outer) join: </li>
+</ul>
+</li>
+</ul>
+<h3>Index</h3>
+<p>一个table有一个数据表，可能有多个索引表。</p>
+<p>主键和外键自动创建索引。</p>
+<p>PostgreSQL</p>
+<ul>
+<li>哈希索引: 索引列值唯一，适合单点查询</li>
+<li>B树索引: 列值是基于比较的，适合范围查询</li>
+</ul>
+<h3>聚合和分组，分区</h3>
+<h3>事务 transcation</h3>
+<ul>
+<li>ACID<ul>
+<li>Atomic</li>
+<li>Consistent: 数据始终处于完整状态，没有不一致状态。（注意与CAP的C不同）</li>
+<li>Isolated</li>
+<li>Durable: 如果事务执行一半时服务器崩溃，那么服务器重启后，那个事务能够安全回滚。</li>
+</ul>
+</li>
+</ul>
+<p>PostgrSQL中每个sql语句都隐式地包含在一个事务里。</p>
+<h3>存储过程和触发器</h3>
+<p>存储过程是在数据库中定义函数。
+语言不确定。</p>
+<p>在插入或更新这样的操作发生之前或之后，触发器会自动调用存储过程。</p>
+<h3>视图和规则</h3>
+<p>使用简单的方式查询复杂的数据。</p>
+<p>如果想要更改视图，需要新建规则，告诉数据库在更改视图时怎样更改真正的表。</p>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/SQL/">SQL</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

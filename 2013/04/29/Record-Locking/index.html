@@ -1,0 +1,293 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Record Locking | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="记录锁(Record Locking)/文件锁(File Locking)的功能是：当一个进程正在读或修改文件的某个部份时，
+它可以阻止其它进程修改同一文件区。
+记录锁是面向进程的，因此不能用于线程间。
+记录锁是一种字节范围锁(byte-range locking)，它锁定的只是文件中的一个区域（也">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Record Locking"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-04-28T16:00:00.000Z"><a href="/2013/04/29/Record-Locking/">Apr 29 2013</a></time>
+      
+      
+  
+    <h1 class="title">Record Locking</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p><strong>记录锁(Record Locking)/文件锁(File Locking)</strong>的功能是：当一个进程正在读或修改文件的某个部份时，
+它可以阻止其它<strong>进程</strong>修改同一文件区。
+记录锁是面向进程的，因此不能用于线程间。
+记录锁是一种字节范围锁(byte-range locking)，它锁定的只是文件中的一个区域（也可以是整个文件）。</p>
+<p>记录锁可用于实现进程间上锁，尤其是无亲缘关系的进程间上锁，而不是用于同一进程下不同线程间的上锁。</p>
+<p>System Call:</p>
+<ul>
+<li><code>flock()</code>, which places lock on entire files，创建文件锁</li>
+<li><code>fcntl()</code>, which places lock on regions of file，创建记录锁</li>
+</ul>
+<p>一个值得注意的是：<strong>父进程设置的记录锁不会被子进程继承</strong>。</p>
+<h3><code>fcntl()</code></h3>
+<p>记录锁主要使用的OS API是<code>fcntl</code>。
+<code>fcntl</code>的接口是：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="comment">#include &lt;fcntl.h&gt;</span>
+int fcntl(int filedes, int cmd, <span class="keyword">...</span>);
+</pre></td></tr></table></figure>
+
+<p><code>fcntl</code>函数可以改变已打开的文件性质。
+第一个参数是目标文件的文件描述符。
+第二个参数是操作标记，可以有以下5种功能：</p>
+<ol>
+<li>复制一个现有的描述符(cmd=F_UDPFD)</li>
+<li>获得/设置文件描述符标记(cmd=F_GETFD或F_SETFD)</li>
+<li>获得/设置文件状态标志(cmd=F_GETFL或F_SETFL)</li>
+<li>获得/设置异步I/O所有权(cmd=F_GETOWN或F_SETOWN)</li>
+<li>获得/设置记录锁(cmd=F_GETLK, F_SETLK或F_SETLKW)</li>
+</ol>
+<p>前4种功能主要是文件操作，第三个参数总是一个整数。
+第5种功能是本文关注的记录锁功能，第三个参数是一个指向flcok结构的指针。</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre><span class="title">struct</span> flock {
+	<span class="title">short</span>	l_type;
+	<span class="title">short</span>	l_whence;
+	<span class="title">__kernel_off_t</span>	l_start;
+	<span class="title">__kernel_off_t</span>	l_len;
+	<span class="title">__kernel_pid_t</span>	l_pid;
+	<span class="title">__ARCH_FLOCK_PAD</span>
+};
+</pre></td></tr></table></figure>
+
+<p>flock结构各成员说明如下：</p>
+<ul>
+<li>l_type：锁的类型：<ul>
+<li>F_RELCK 共享读锁/shared lock</li>
+<li>F_WRLCK 独占写锁/exclusive lock</li>
+<li>F_UNLCK 解锁</li>
+</ul>
+</li>
+<li>l_whence：加锁/解锁区域偏移起点：<ul>
+<li>SEEK_SET：文件开始处</li>
+<li>SEEK_CUR：文件当前偏移处</li>
+<li>SEEK_END：文件当前长度处，即文件末尾</li>
+</ul>
+</li>
+<li>l_start：加锁/解锁区域相对l_whence起始字节偏移量</li>
+<li>l_len：加锁/解锁区域长度</li>
+</ul>
+<p>l_whence和l_start的组合与其在<code>fseek</code>函数中很像。
+如果要锁整个文件，那么<code>l_whence=SEEK_SET,l_start=0,l_len=0</code>即可。</p>
+<h3>锁的类型</h3>
+<p>和一般锁的定义一样，读锁可以共享，写锁必需独占。
+一个文件区域某一时刻只能有一把锁。
+如果一个进程对一个文件区域已经有一把锁，后来该进程又企图在同一文件区域再加一把锁，
+那么新锁将替换老锁。</p>
+<p>通过<code>fcntl()</code>获得的lock时是inode和process关联的。
+当关闭一个文件描述符时，那么其关联的inode上该进程设置的锁将被释放。
+因此通过不同<code>open()</code>打开的文件描述符，如果通过其中一个加锁，然后<code>close()</code>另外一个文件描述符，那么锁仍将会被释放。这个和<code>flock()</code>不同。
+<code>fcntl()</code>获得的锁不能被继承。</p>
+<p>加读锁时，文件描述符必需是读打开。
+加写锁时，文件描述符必需是写打开。</p>
+<h3>锁的竞争方式</h3>
+<p>上面说了<code>fcntl</code>的<code>cmd</code>参数可以设置三种参数，它们的作用分别是：</p>
+<h5>F_GETLK</h5>
+<p>测试flock指定的锁能否获取</p>
+<ul>
+<li>如果能，把l_type设为F_UNLCK。</li>
+<li>如果不能，把正在占用文件区域的锁的信息写入flock。</li>
+</ul>
+<h5>F_SETLK</h5>
+<p>非阻塞竞争或释放flock指定的锁，</p>
+<ul>
+<li>如果成功，fcntl返回0</li>
+<li>如果失败，fcntl立即返回-1并设置errno为EAGAIN</li>
+</ul>
+<p>对于想建立非阻塞锁的程序，应该使用F_SETLK，并对返回结果测试。</p>
+<h5>F_SETLKW</h5>
+<p>阻塞竞争flock指定的锁，直到竞争成功返回。</p>
+<p>关于记录锁的三条规则：</p>
+<ol>
+<li>关闭文件描述符时，锁都被释放</li>
+<li>fork产生的子进程不继承父进程的锁</li>
+<li>exec后，新程序可以继承原进程的锁，除了文件描述符设置了close-on-exit。</li>
+</ol>
+<p>对于待处理的上锁请求是怎样处理的（是FIFO还是有优先考虑读锁），Poxis标准并未说明。</p>
+<h3><code>flock()</code></h3>
+<p><code>flock()</code>来自于BSD。它的作用是锁住整个文件。</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="preprocessor">#include &lt;sys/file.h&gt;</span>
+<span class="keyword">int</span> flock(<span class="keyword">int</span> fd, <span class="keyword">int</span> operation);
+</pre></td></tr></table></figure>
+
+<p>A file lock obtained via <code>flock()</code> is associated with the <strong>open file description(system-wide)</strong>, rather than the file descripor(process-wide) or the file(i-node)(system-wide) itself. This is different with record locks obtained by <code>fcntl()</code>。</p>
+<p>而通过<code>dup()</code>,<code>dup2()</code>和<code>fcntl()</code>拷贝的file descriptor是共享open file description。
+因此这些拷贝的file descriptor只需其中之一释放锁即可。如果都不显式释放，那么当所有拷贝的file descriptor关闭后，open file description上的锁就会自动释放。
+同样，<code>fork()</code>也是通过<code>dup()</code>复制文件描述符，也就是说其可以被其它进程继承。</p>
+<p>而通过<code>open()</code>打开同一文件时，每次打开都会创建新的open file description。
+每个open file description都可绑定独立的锁。</p>
+<h3>Mix <code>stdio</code> and locking</h3>
+<p>Because of the user-space buffering performed by the <code>stdio</code> library,
+we should be cautious when using <code>stdio</code> functions with the file lock.
+The problem is that an input buffer might be filled before a lock is placed,
+or an output buffer might be flushed afther a lock is removed.
+There are some ways to avoid these problems:</p>
+<ul>
+<li>Using system call <code>read()</code> and <code>write()</code> install of the <code>stdio</code> library.</li>
+<li>Flush the stdio stream immediately after placing a lock on the file, and flush it once more immediately before releasing the lock.</li>
+<li>Perhaps at the cost of some efficiency, disable stdio buffering altogether using <code>setbuff()</code>(or similar).</li>
+</ul>
+<h3>Reference</h3>
+<ul>
+<li>APUE</li>
+<li>The Linux Programming Interface</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

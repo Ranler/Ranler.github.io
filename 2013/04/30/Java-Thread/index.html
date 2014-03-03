@@ -1,0 +1,276 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Java Thread | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="Wait Notify and Interrupt
+Java Thread可以执行在多核（并行）或者时间份片的单核处理器上执行（并发）。
+一般接口是：
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+public interface Runable {
+	public abstract void run(">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Java Thread"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-04-29T16:00:00.000Z"><a href="/2013/04/30/Java-Thread/">Apr 30 2013</a></time>
+      
+      
+  
+    <h1 class="title">Java Thread</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <h2>Wait Notify and Interrupt</h2>
+<p>Java Thread可以执行在多核（并行）或者时间份片的单核处理器上执行（并发）。
+一般接口是：</p>
+<figure class="highlight lang-java"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Runable</span> {</span>
+	<span class="keyword">public</span> <span class="keyword">abstract</span> <span class="keyword">void</span> run();
+}
+
+<span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Thread</span> <span class="keyword">implements</span> <span class="title">Runable</span> {</span>
+	<span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> start();
+	<span class="keyword">public</span> <span class="keyword">void</span> run() {...}
+	<span class="keyword">public</span> <span class="keyword">void</span> interrupt() {...}
+	...
+}
+</pre></td></tr></table></figure>
+
+<p>每个Java对象都关联一个<strong>等待集合(wait set)</strong>，集合中的元素是<strong>线程</strong>。
+Java通过以下三个方法对等待集合进行原子操作：</p>
+<ul>
+<li>Object.wait()</li>
+<li>Object.notify()</li>
+<li>Object.notifyAll()</li>
+</ul>
+<p>等待集合也受线程打断状态影响:</p>
+<ul>
+<li>Thread.interrupt()</li>
+</ul>
+<h3>wait</h3>
+<p>wait动作在调用以下方法时发生：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="function"><span class="title">wait</span><span class="params">()</span>
+<span class="title">wait</span><span class="params">(long millisecs)</span>
+<span class="title">wait</span><span class="params">(long millisecs, int nanosecs)</span>
+</pre></td></tr></table></figure>
+
+<p>如果调用成功，wait行为将发生阻塞，直到被唤醒。
+如果调用失败，将抛出异常。</p>
+<p>例如，线程t调用对象m的wait()，并且t在m上获得锁的个数为n。
+接下来可能发生以下几种情况：</p>
+<ul>
+<li>如果n=0,抛出<code>IllegalMonitorStateException</code>。这是因为t尚未获得m的锁。</li>
+<li>如果wait的参数错误，抛出<code>IllegalArgumentException</code>。</li>
+<li>如果t被打断，抛出<code>InterruptedException</code>，t的打断状态设为false。</li>
+<li>否则，以下流程将顺序执行：<ol>
+<li>t添加到m的等待集合，并且t在m上执行n次unlock动作。
+t被阻塞，直到遇到以下任意动作才被移出等待集合。<ul>
+<li>m的notify动作被执行且t被选中移出等待集合</li>
+<li>m的notifyAll动作被执行</li>
+<li>t的interrupt动作被执行</li>
+<li>wait的时间到</li>
+</ul>
+</li>
+<li>t在m上执行n次lock动作。</li>
+<li>如果t因为interrupt动作被移出等待集合，那么t的打断状态被设为false，
+并抛出InterruptedException。</li>
+</ol>
+</li>
+</ul>
+<h3>Notification</h3>
+<p>唤醒动作在调用以下方法时发生：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="function"><span class="title">notify</span><span class="params">()</span>
+<span class="title">notifyAll</span><span class="params">()</span>
+</pre></td></tr></table></figure>
+
+<p>当调用对象m的<code>notify()</code>时，从m的等待集合中移出一个线程t，并使t在m上执行n次lock动作。
+具体的从等待集合中选出那个线程是没有保证的。</p>
+<p>当调用对象m的<code>notify()</code>时，从m的等待集合中移出所有线程。
+但是<strong>只有一个线程</strong>能在m上执行n次lock动作，其余线程仍将阻塞，等待锁的释放。</p>
+<h3>Interruptions</h3>
+<p>打断动作在调用以下方法时发生：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre>Thread<span class="variable">.interrupt</span>()
+ThreadGroup<span class="variable">.interrupt</span>()
+</pre></td></tr></table></figure>
+
+<p>当线程t的interrupt()被调用时，t的打断状态被设为true。
+如果t在某个对象的等待集合中，则移出t，然后t竞争对象的锁，打断状态设为false，
+最后抛出<code>InterruptedException</code>。</p>
+<p>调用<code>Thread.interrupted()</code>将获得线程的打断状态，并清除其打断状态为false。
+调用<code>Thread.isInterrupted()</code>将直接获得线程的打断状态，并不清除。</p>
+<h3>总结</h3>
+<p>如果线程t在等待时同时收到唤醒动作和打断动作，那么线程t可能：</p>
+<ul>
+<li>从wait正常返回，但仍有一个未决的interrupt(也就是说<code>Thread.interrupted()</code>将返回true)</li>
+<li>从wait抛出<code>InterruptedException</code></li>
+</ul>
+<p>在线程正常返回时，可能打断状态可能未重置。</p>
+<p>同样，唤醒动作也不会因Interrupt而丢失。只要调用<code>notify()</code>，必有一个线程正常wait返回。</p>
+<h3>Reference</h3>
+<ul>
+<li>JLS7, Chapter17</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/JVM/">JVM</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

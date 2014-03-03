@@ -1,0 +1,281 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>PThread (POSIX Thread) | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="All threads share the same global memory, including:
+
+data segment: initialized data and uninitialized data(BSS)
+heap segment
+
+But per-thread statks n">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="PThread (POSIX Thread)"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-06-26T16:00:00.000Z"><a href="/2013/06/27/pthread/">Jun 27 2013</a></time>
+      
+      
+  
+    <h1 class="title">PThread (POSIX Thread)</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>All threads share the same global memory, including:</p>
+<ul>
+<li>data segment: initialized data and uninitialized data(BSS)</li>
+<li>heap segment</li>
+</ul>
+<p>But per-thread statks not shared.</p>
+<p>On Linux, threads are implemented using <code>clone()</code>, and its ten times faster than <code>fork()</code>. Even though <code>fork()</code> has COW mechanism, thread do not need copy many of the attributes such as page tables.(线程是调度的基本单位，进程是资源分配的基本单位)</p>
+<p>Two main POSIX Threading implementations on Linux:</p>
+<ul>
+<li>Linux Threads</li>
+<li>Native POSIX Threads Library (NPTL)</li>
+</ul>
+<h3>1. <code>errno</code></h3>
+<p>On Linux, each thread has their own <code>errno</code> value.
+The traditional method of returning status from system calls and some library functions is to return 0 on success and –1 on error, with <code>errno</code> being set to indicate the error.
+But all Pthreads functions return 0 on success and return position value on failure. The failure value is same as <code>errno</code> and can be placed in <code>errno</code> by traditional UNIX system call.</p>
+<h3>2. compile</h3>
+<p>Use <code>-pthread</code> flags for gcc. The effects of this option including following:</p>
+<ul>
+<li><code>_REENTRANT</code> preprocessor macro is defined. This causes the declarations of a few reentrant functions to be exposed.</li>
+<li>The program is linked with the <strong>libpthread</strong> library (the equivalent of <code>–lpthread</code> ).</li>
+</ul>
+<h3>3. Thread Control</h3>
+<ul>
+<li>pthread_create</li>
+<li>pthread_exit</li>
+<li>pthread_self</li>
+<li>pthread_equal</li>
+<li>pthread_join</li>
+<li>pthread_detach</li>
+</ul>
+<h3>4. synchronize</h3>
+<h5>4.1 mutex (mutual exclusion)</h5>
+<p>A mutex is a variable of the type <code>pthread_mutex_t</code>.</p>
+<ul>
+<li>statically initialize: <code>pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER</code>;</li>
+<li>dynamically initialize: <code>pthread_mutex_t mtx = pthread_mutex_init()</code>;<ul>
+<li><code>PTHREAD_MUTEX_DEFAULT</code>/NULL: same as <code>PTHREAD_MUTEX_NORMAL</code> on Linux</li>
+<li><code>PTHREAD_MUTEX_NORMAL</code>: may cause deadlock</li>
+<li><code>PTHREAD_MUTEX_ERRORCHECK</code>: check deadlock</li>
+<li><code>PTHREAD_MUTEX_RECURSIVE</code>: has lock count</li>
+</ul>
+</li>
+<li>locking a mutex: <code>int pthread_mutex_lock(pthread_mutex_t *mutex);</code><ul>
+<li><code>pthread_mutex_trylock()</code></li>
+<li><code>pthread_mutex_timedlock()</code></li>
+</ul>
+</li>
+<li>unlocking a mutex: <code>int pthread_mutex_unlock(pthread_mutex_t *mutex);</code></li>
+<li>destroy a mutex: <code>pthread_mutex_destroy()</code>, only for non-static mutex</li>
+</ul>
+<p>If a thread lock the mutex that it has locked by thread self again, may result: the thread  deadlocks, blocked trying to lock a mutex that it already owns, or the call fails, returning the error EDEADLK. On Linux, the thread deadlocks by default.（lock不可重入?）</p>
+<p>mutex locking is advisory, rather than mandatory(和Linux下文件锁机制相同).</p>
+<p>Some performance data:</p>
+<ul>
+<li>without mutexes: 0.35s</li>
+<li>with mutexes: 3.1s</li>
+<li>with file lock: 22s</li>
+<li>with System V semaphore: 14s</li>
+</ul>
+<p>On Linux, mutexes are implemented using <code>futexes</code> (an acronym derived from fast user space mutexes ), and lock contentions are dealt with using the <code>futex()</code>  system call.</p>
+<p>To avoid deadlock, when threads can lock the same set of mutexes, they should always lock them in the same order.</p>
+<h5>4.1.1 POSIX semaphores versus Pthreads mutexes</h5>
+<p>POSIX semaphores and Pthreads mutexes can both be used to synchronize the actions of threads within the same process, and their performance is similar. How-ever, mutexes are usually preferable, beca use the ownership property of mutexes enforces good structuring of code (only  the thread that locks a mutex can unlock it). By contrast, one thread can increment a semaphore that was decremented by another thread. This flexibility can lead to  poorly structured sy nchronization designs. (For this reason, semaphores are sometime s referred to as the “gotos” of concurrent programming.)</p>
+<p>There is one circumstance in which mutexes can’t be used in a multithreaded application and semaphores may therefore be preferable. Because it is async-signal-safe (see Table 21-1, on page 426), the sem_post() function can be used from within a signal handler to synchronize with another thread. This is not possible with mutexes, because the Pthreads functions for operating on mutexes are not async-signal-safe. However, because it is usually preferable to deal with asynchronous sig-nals by accepting them using  sigwaitinfo() (or similar), rather than using signal han-dlers (see Section 33.2.4), this advantage of semaphores over mutexes is seldom required.</p>
+<h5>4.2 condition variable</h5>
+<p>A condition variable allows one thread to inform other threads about changes in the state of a shared variable (or other shared resource) and allows the other threads to wait (block) for such notification.</p>
+<p>The principal condition variable operations are signal and wait. The signal opera-tion is a notification to one or more waiting threads that a shared variable’s state has changed. The wait operation is the means of blocking until such a notification is received.</p>
+<p>A condition variable has the type <code>pthread_cond_t</code>.</p>
+<ul>
+<li>statically initialize: <code>pthread_cond_t cond = PTHREAD_COND_INITIALIZER;</code></li>
+<li>dynamically initialize: <code>pthread_cond_t cond = pthread_cond_init();</code></li>
+<li>singal:<ul>
+<li><code>pthread_cond_signal()</code>: signal used to indicate source availability</li>
+<li><code>pthread_cond_broadcast()</code>: broadcast used to indicate state change</li>
+</ul>
+</li>
+<li>wait:<ul>
+<li><code>pthread_cond_wait()</code></li>
+<li><code>pthread_cond_timedwait()</code></li>
+</ul>
+</li>
+<li>destroy: <code>pthread_cond_destroy()</code>, only for non-static cond</li>
+</ul>
+<p>The wait function do these steps(一定先释放lock):</p>
+<ol>
+<li>unlock the mutex specified by mutex;</li>
+<li>block the calling thread until another thread signals the condition variablecond ;</li>
+<li>relock  mutex.</li>
+</ol>
+<h5>4.2.1 Spurious wakeup problem</h5>
+<p><strong>Spurious wakeup</strong> is that a thread might be awoken from its waiting state even though no thread signaled the condition variable[^SWP]. 
+Because spurious wakeup can happen repeatedly,  this problem can be solved by waiting inside a loop that terminates when the condition is true:</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre><span class="comment">pthread_cond_t</span> <span class="comment">cond</span> <span class="comment">=</span> <span class="comment">PTHREAD_COND_INITIALIZER;</span>
+
+<span class="comment">//</span> <span class="comment">wait</span> <span class="comment">thread</span> 
+<span class="comment">while(</span>.<span class="string">.</span><span class="string">.</span><span class="comment">check</span> <span class="comment">wait</span> <span class="comment">object</span>.<span class="string">.</span><span class="comment">)</span> <span class="comment">{</span>
+<span class="comment">	pthread_cond_wait(&cond);</span>
+<span class="comment">}</span>
+
+<span class="comment">//</span> <span class="comment">signal</span> <span class="comment">thread</span>
+<span class="string">.</span><span class="string">.</span><span class="string">.</span><span class="comment">set</span> <span class="comment">wait</span> <span class="comment">object</span>.<span class="string">.</span><span class="string">.</span>
+<span class="comment">pthread_cond_signal(&cond);
+</pre></td></tr></table></figure>
+
+<h3>Reference</h3>
+<ul>
+<li>The Linux Programming Interface, C29-C30
+[^SWP]: <a href="http://en.wikipedia.org/wiki/Spurious_wakeup" target="_blank">http://en.wikipedia.org/wiki/Spurious_wakeup</a></li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Storage 2 : Protocol | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="1. 网络协议
+1.1 OSI
+OSI开放式系统互联。节点之间通信就会符合OSI模型。
+
+TCP/IP协议：链路层可使用Ethernet
+FC协议
+SCSI/SAS协议
+
+节点与外部设备连接协议：
+
+PCI总线网
+USB网
+
+RAID控制器可以看成一层路由器。
+1.2 TCP/IP和以太网
+TCP/">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Storage 2 : Protocol"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-08-07T16:00:00.000Z"><a href="/2013/08/08/Storage-2/">Aug 8 2013</a></time>
+      
+      
+  
+    <h1 class="title">Storage 2 : Protocol</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <h2>1. 网络协议</h2>
+<h3>1.1 OSI</h3>
+<p>OSI开放式系统互联。节点之间通信就会符合OSI模型。</p>
+<ul>
+<li>TCP/IP协议：链路层可使用Ethernet</li>
+<li>FC协议</li>
+<li>SCSI/SAS协议</li>
+</ul>
+<p>节点与外部设备连接协议：</p>
+<ul>
+<li>PCI总线网</li>
+<li>USB网</li>
+</ul>
+<p>RAID控制器可以看成一层路由器。</p>
+<h3>1.2 TCP/IP和以太网</h3>
+<p>TCP/IP是一套协议体系，以太网也是一套协议体系。
+以太网也有网络层协议，但是TCP/IP的网络层和传输层应用太广泛，
+所以在绝大部分情况下使用的是TCP/IP协议的网络层和传输层。
+TCP/IP借用了以太网的链路层和物理层。
+这也称为Protocol over Protocol(PoP)。</p>
+<h3>1.3 SCSI</h3>
+<p>SCSI协议跨越了OSI的7个层次：</p>
+<ul>
+<li>物理层</li>
+<li>链路层：传输数据帧，CRC校验。</li>
+<li>网络层：总线与寻址</li>
+<li>传输层：出错重传</li>
+<li>会话层，表示层，应用层</li>
+</ul>
+<p>SCSI总线的寻址方式：控制器(SCSI卡)-通道/总线-SCSI ID(Disk)-LUN ID(虚拟磁盘)。
+每个SCSI控制器可以有多个总线/通道，常见4通道。
+每个总线/通道上可接入8（8位总线）或16个（16位总线）SCSI设备。（目前32位SCSI总线允许32个SCSI设备）
+所以常见SCSI控制器上可接入64块磁盘。</p>
+<p>Logical Unit Number(LUN)表示虚拟盘/逻辑盘的ID。</p>
+<p>SCSI语言处理的是LBA块，而不是文件。
+因此文件级拷贝SCSI控制器单独执行不了，需要CPU和内存参与。</p>
+<h3>1.4 Fibre Channel(FC) Protocal</h3>
+<ul>
+<li>Fibre Channel FC, 网状通道</li>
+<li>Fiber Channel 光纤通道</li>
+</ul>
+<p>FC协议和TCP/IP协议是同一层次的两套不同的协议，主要设计用于骨干网。
+FC也有FC网络，FC协议，FC交换机，FC路由器。</p>
+<p>FC协议符合OSI：</p>
+<ul>
+<li>物理层：1-8GB/s。光纤（普遍），铜线或RJ-45/47线缆。FC1。</li>
+<li>链路层：FC帧，流量控制，MTU。</li>
+<li>网络层：网络拓扑：FC-AL（仲裁环路）和Fabric（网状）。地址：WWNN和WWPN。FC2。</li>
+<li>传输层：分片。服务类型Class1-4。FC4。</li>
+<li>会话层，表示层，应用层</li>
+</ul>
+<p>FC协议从物理层到传输层功能直接做到硬件上，而不是在OS中。
+TCP/IP协议从IP层开始做在OS上，链路层做在网卡上。</p>
+<p>FC网络中的七种类型端口：</p>
+<ul>
+<li>终端节点：<ul>
+<li>N: 终端端口Node &lt;-&gt; 交换机端口Fabric。</li>
+<li>L: 仲裁环上各个节点端口类型。</li>
+<li>NL: 开发环中终端端口，具有N和L端口能力。</li>
+</ul>
+</li>
+<li>交换机：<ul>
+<li>F: Fabric端口</li>
+<li>FL: 开发环中交换机端口，具有N和L端口能力</li>
+<li>E: 连结交换机与交换机的端口</li>
+<li>G: 万能端口</li>
+</ul>
+</li>
+</ul>
+<h3>1.5 Serial Attached SCSI (SAS)</h3>
+<p>SAS网络为全交换式架构，不像FC那样需要仲裁，每个节点独享带宽，系统的带宽等于节点带宽乘以节点个数（宽端口）。</p>
+<ul>
+<li>链路层</li>
+<li>网络层：地址WWN</li>
+<li>传输层：SSP，STP，SMP</li>
+<li>应用层</li>
+</ul>
+<p>SAS vs FC</p>
+<ul>
+<li>SAS优势：可用宽端口提高带宽。兼容SATA盘。成本低。</li>
+<li>SAS劣势：链路使用铜线传输受限。单个磁盘带宽低。</li>
+</ul>
+<p>FCP也属于SAS。SAS盘兼容SATA盘。
+SAS受铜线传输的影响，目前并没有SAS交换机，
+在磁盘阵列前端也很少用SAS接口。</p>
+<h2>二、 Protocol over Protocol (PoP)</h2>
+<p>几种PoP:</p>
+<ul>
+<li>IP over FC, SCSI over FC</li>
+<li>IP over Ethernet, IP over ATM</li>
+<li>FC over Internet</li>
+</ul>
+<p>PoP模式：</p>
+<ul>
+<li>调用 Use</li>
+<li>隧道封装 Tunnel: iSCSI, PPPoE</li>
+<li>映射 Map</li>
+</ul>
+<h3>2.1 SCSI over FC</h3>
+<p>SCSI协议也是一套符合OSI七层的协议体系。
+随着技术的发展，并行SCSI总线在速度和效率上已经无法满足需求。
+因此，SCSI-3规范中，将SCSI协议分为：</p>
+<ul>
+<li>SCSI指令语义部分：OSI上三层</li>
+<li>SCSI底层传输部分：OSI下四层</li>
+</ul>
+<p>这样，SCSI指令集可以使用FC协议的下四层作为传输载体。
+FC协议定义了FC4层上针对SCSI指令集的特定接口，称为FCP(?)，也就是SCSI over FC。
+也就是说链路是FC，内容是SCSI指令。这样，提高了传输性能和传输距离。</p>
+<p>通过SCSI over FC，磁盘阵列的前端接口从SCSI接口换成了FC接口，同样主机也增加了FC接口。
+这样中间再加上FC交换机，可以使多个磁盘阵列（或磁盘阵列上的多个端口）和多个主机组合，组成SAN。</p>
+<p>磁盘阵列后端的SCSI总线也可以换成FC网络，这样同样能提高速度，突破每个总线32个SCSI设备的限制。</p>
+<p>同样，磁盘的接口也可以换成FC接口，直接完成FC协议的通信逻辑，这种接口叫FCP。FC磁盘承载的是FC-AL协议，SCSI磁盘承载的是并行SCSI协议。</p>
+<h3>2.2 Internet SCSI (iSCSI): SCSI over IP</h3>
+<p>同SCSI over FC一样，应用层SCSI协议跑在TCP/IP协议之上就叫做iSCSI。
+iSCSI盘阵前端端口使用以太网网口。
+后端端口还是使用FC接口。</p>
+<p>以iSCSI为端口的网络存储叫做IP SAN。
+IP SAN的链路层不一定使用以太网链路层，也可以是ATM, PPP, HDLC。</p>
+<p>iSCSI vs NAS:
+在传输层开始以下都使用TCP/IP协议。
+在应用层，iSCSI使用的是SCSI协议，NAS使用的是文件系统的操作。
+NAS需要有文件服务和文件系统，iSCSI只需提供逻辑磁盘即可。</p>
+<h3>2.3 FC over Ethernet (FCoE)</h3>
+<p>为了弥补以太网链路层没有传输保障的缺陷，
+CEE/DEC标准出现了，这样FC就可以把以太网的链路层作为载体，产生了FCoE。</p>
+<p>FCoE卡兼容以太网, 其上层可以是IP数据，FCoE数据和iSCSI数据。
+FCoE交换机的出现也使FC网络和IP网络可以融合一起。</p>
+<p>FCoE逐渐替代了FC的硬件。</p>
+<p>FCoE vs iSCSI:</p>
+<ul>
+<li>FCoE 高效，直接做在硬件上，双网融合；可扩展性依然不强，兼容性低</li>
+<li>iSCSI 协议栈在OS中</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Storage/">Storage</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

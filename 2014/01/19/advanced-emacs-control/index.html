@@ -1,0 +1,335 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Advanced Emacs (2): ELisp 控制语句 | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="1. 数据类型
+primitive types:
+
+整数
+浮点数
+symbol 符号：包括关键字和特殊符号
+
+cons 序对
+
+序列：list，以及模拟的stack，set，tree，association list
+数组：包括向量(vector)，字符串(string)，字符表(char-tabl">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Advanced Emacs (2): ELisp 控制语句"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2014-01-19T03:00:20.000Z"><a href="/2014/01/19/advanced-emacs-control/">Jan 19 2014</a></time>
+      
+      
+  
+    <h1 class="title">Advanced Emacs (2): ELisp 控制语句</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <h3>1. 数据类型</h3>
+<p>primitive types:</p>
+<ul>
+<li>整数</li>
+<li>浮点数</li>
+<li><p>symbol 符号：包括关键字和特殊符号</p>
+</li>
+<li><p>cons 序对</p>
+</li>
+<li>序列：list，以及模拟的stack，set，tree，association list</li>
+<li>数组：包括向量(vector)，字符串(string)，字符表(char-table)，布尔向量(bool-vector)</li>
+<li><p>hash-table 散列表</p>
+</li>
+<li><p>内建函数：比如cons, if, and之类</p>
+</li>
+<li>byte-code function, primitive function原子函数</li>
+<li>其它特殊类型：如缓冲区(buffer)</li>
+</ul>
+<h3>求值规则</h3>
+<p>可以求值的Lisp对象被称为表达式(expression/form)。
+表达式有以下几种类型：</p>
+<ul>
+<li>自求值表达式：数字、字符、关键字、特殊符号(t,nil)、数组(vector, string)。</li>
+<li>符号：返回符号值。</li>
+<li>列表list：list的第一个元素可以是function，macro或special form。如果这个元素是符号，那么返回符号function部分对象。<ul>
+<li>function: list中参数元素求值，作为实参使用<code>apply</code>调用函数。</li>
+<li>macro: 根据宏定义扩展，然后函数调用。</li>
+<li>special form:  list中参数元素可能并不会全求值。 每个特殊表达式都有对应的求值规则。</li>
+</ul>
+</li>
+</ul>
+<p>符号的函数值可以是一个 lisp 函数 （ lambda 表达式） 、 byte-code函数、 原子函数 （ primitive function） 、 宏、 特殊表达式或 autoload 对象。</p>
+<p><code>&#39;</code>或<code>quote</code>可以阻止S-表达式求值。</p>
+<h3>2. 变量</h3>
+<p>变量无需声明，可以直接定义（赋值）。</p>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="list">(<span class="title">setq</span><span class="body"> variable-name value)</span></span>
+<span class="list">(<span class="title">defvar</span><span class="body"> variable-name value
+  <span class="string">"document string"</span>)</span></span>
+</pre></td></tr></table></figure>
+
+<p><code>defvar</code>可以定义未定义的变量，并可以为已定义的变量添加document string。
+使用<code>C-h v</code>查看变量的document string。</p>
+<p>ELisp中函数是全局的， 变量也很容易成为全局变量，
+因为局部变量和局部变量的赋值都是使用setq函数。</p>
+<h5>局部变量</h5>
+<p>使用<code>let</code>或<code>let*</code>，后者可以使用已定义的变量。</p>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="list">(<span class="title">let</span><span class="body"> <span class="list">(<span class="title">bindings</span><span class="body">)</span></span>
+  body)</span></span>
+</pre></td></tr></table></figure>
+
+<h5>buffer-local 变量</h5>
+<p>使用 <code>make-local-variable</code> 创建buffer-local变量。</p>
+<h5>函数的形式参数</h5>
+<h5>作用域(scope)与生存期(extent)</h5>
+<p><a href="http://findfunaax.com/notes/file/126" target="_blank">以前讨论过</a>，ELisp是一种动态调用域。
+当它遇到变量的符号名时，会逐层检查运行时的调用栈寻找这个符号，直至最外层的全局变量。
+如果都没有定义，则报出Symbol&#39;s value as variable is void错误。
+也因此Emacs在编译时并不能检查变量存不存在，只有运行时才知道。</p>
+<p>ELisp不支持闭包。</p>
+<p>生存期指对象在内存中的创建和释放。</p>
+<ul>
+<li>全局变量：创建:第一次定义时；释放：Emacs关闭时或<code>unintern</code></li>
+<li>buffer-local变量：创建：第一次定义时；释放：buffer关闭或<code>kill-local-variable</code></li>
+<li>局部变量：创建：<code>let</code>执行时；释放：离开<code>let</code>表达式</li>
+<li>函数的形式参数：创建：函数调用时。释放：离开函数</li>
+</ul>
+<p>命名习惯后缀：</p>
+<ul>
+<li>hook 一个在特定的况下调用的函数列表， 比如关闭缓冲时， 进入某个模式时。</li>
+<li>function 值为一个函数</li>
+<li>functions 值为一个函数列表</li>
+<li>flag 值为 nil 或 non-nil</li>
+<li>predicatee 值是一个判断函数，返回nil或non-nil</li>
+<li>program 或-command 一个程序或shell命令</li>
+<li>form 一个表达式</li>
+<li>forms 一个表达式列表。</li>
+<li>map 一个按键映射(keymap)</li>
+</ul>
+<h3>3. 函数</h3>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="list">(<span class="title">defun</span><span class="body"> function-name <span class="list">(<span class="title">arguments-list</span><span class="body">)</span></span>
+  <span class="string">"document string"</span>
+  body)</span></span>
+</pre></td></tr></table></figure>
+
+<p>函数都有返回值，返回值是body中最后一个表达式的值。</p>
+<p>使用<code>C-h f</code>可以在<code>*help*</code>缓冲中显示函数的document string和源码链接。</p>
+<h5>匿名函数 lambda</h5>
+<p>lambda表达式返回匿名函数，可以通过<code>setq</code>赋予变量。</p>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="list">(<span class="title">lambda</span><span class="body"> <span class="list">(<span class="title">arguments-list</span><span class="body">)</span></span>
+  <span class="string">"documentation string"</span>
+  body)</span></span>
+</pre></td></tr></table></figure>
+
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="list">(<span class="title">setq</span><span class="body"> foo <span class="list">(<span class="title">lambda</span><span class="body"> <span class="list">(<span class="title">name</span><span class="body">)</span></span>
+<span class="list">(<span class="title">message</span><span class="body"> <span class="string">"Hello, %s!"</span> name)</span></span>)</span></span>)</span></span>
+  <span class="list">(<span class="title">funcall</span><span class="body"> foo <span class="string">"Emacser"</span>)</span></span>
+</pre></td></tr></table></figure>
+
+<h3>4. 控制流</h3>
+<h5>顺序流</h5>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+</pre></td><td class="code"><pre><span class="list">(<span class="title">progn</span><span class="body"> A B C ...)</span></span>
+</pre></td></tr></table></figure>
+
+<h5>条件判断</h5>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre><span class="comment">;; 两类</span>
+<span class="list">(<span class="title">if</span><span class="body"> condition
+  then
+  else)</span></span>
+
+<span class="comment">;; 多类</span>
+<span class="list">(<span class="title">cond</span><span class="body"> <span class="list">(<span class="title">case1</span><span class="body"> do-when-case<span class="number">1</span>)</span></span>
+      <span class="list">(<span class="title">case2</span><span class="body"> do-when-case<span class="number">2</span>)</span></span>
+      ...
+      <span class="list">(<span class="title">t</span><span class="body"> do-when-none-meet)</span></span>)</span></span>
+</pre></td></tr></table></figure>
+
+<ul>
+<li><code>when</code> 省去if里的progn结构</li>
+<li><code>unless</code> 省去条件为真子句需要的nil表达式</li>
+</ul>
+<h5>循环</h5>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="list">(<span class="title">while</span><span class="body"> condition
+  body)</span></span>
+</pre></td></tr></table></figure>
+
+<h3>运算</h3>
+<h5>逻辑运算</h5>
+<ul>
+<li><code>and</code>: 可用于代替<code>when</code>和参数检查，短路性质</li>
+<li><code>or</code>: 可用于代替<code>unless</code>和设置函数参数缺省值，短路性质</li>
+<li><code>not</code>: </li>
+</ul>
+<h3>库</h3>
+<ul>
+<li>模拟的 Common Lisp 的库 cl, RMS不推荐使用</li>
+<li>emms</li>
+</ul>
+<h3>参考</h3>
+<ul>
+<li>Elisp 入门 叶文彬 </li>
+<li>GNU Emacs Lisp Reference Manual</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/emacs/">emacs</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

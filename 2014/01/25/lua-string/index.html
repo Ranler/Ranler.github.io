@@ -1,0 +1,362 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Lua String Analysis | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="在Lua中String类型是以引用方式保存，
+每个string变量保存着TString类型的指针，并且TString类型也是GCObject类型，受GC管理。
+TString类型定义如下：
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+// lobject.h
+typedef unio">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Lua String Analysis"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2014-01-25T03:00:00.000Z"><a href="/2014/01/25/lua-string/">Jan 25 2014</a></time>
+      
+      
+  
+    <h1 class="title">Lua String Analysis</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>在Lua中String类型是以引用方式保存，
+每个string变量保存着<code>TString</code>类型的指针，并且<code>TString</code>类型也是<code>GCObject</code>类型，受GC管理。
+<code>TString</code>类型定义如下：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="code"><pre>// lobject.h
+<span class="typedef">typedef union <span class="type">TString</span> <span class="container">{
+     <span class="type">L_Umaxalign</span> <span class="title">dummy</span>;
+     <span class="title">struct</span> {
+          <span class="type">CommonHeader</span>;
+          <span class="title">lu_byte</span> <span class="title">extra</span>;  /* <span class="title">reserved</span> <span class="title">words</span> <span class="title">for</span> <span class="title">short</span> <span class="title">strings</span>; "<span class="title">has</span> <span class="title">hash</span>" <span class="title">for</span> <span class="title">longs</span> */
+          <span class="title">unsigned</span> <span class="title">int</span> <span class="title">hash</span>;
+          <span class="title">size_t</span> <span class="title">len</span>;      /* <span class="title">number</span> <span class="title">of</span> <span class="title">characters</span> <span class="title">in</span> <span class="title">string</span> */
+     }</span> tsv;</span>
+}<span class="type">TString</span>;
+
+// llimits.h
+<span class="typedef">typedef unsigned char lu_byte;</span>
+</pre></td></tr></table></figure>
+
+<p>从Lua 5.2.1开始，字符串类型在实现时又被细分，分为：</p>
+<ul>
+<li>短字符串: 长度不大于LUAI_MAXSHORTLEN（默认40）的字符串，包括所有元方法名和关键字字符串。相同字符串数据在Lua State中只保存一份(intern)。</li>
+<li>长字符串：长度大于LUAI_MAXSHORTLEN，每个字符串数据独立保存。</li>
+</ul>
+<p>它们的类型标签是；</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre><span class="comment">// lobject.h 56</span>
+<span class="comment">/* Variant tags for strings */</span>
+<span class="preprocessor">#<span class="keyword">define</span> LUA_TSHRSTR     (LUA_TSTRING | (0 &lt;&lt; 4))  /* short strings */</span>
+<span class="preprocessor">#<span class="keyword">define</span> LUA_TLNGSTR     (LUA_TSTRING | (1 &lt;&lt; 4))  /* long strings */</span>
+
+<span class="comment">// lua.h 82</span>
+<span class="preprocessor">#<span class="keyword">define</span> LUA_TSTRING             4</span>
+</pre></td></tr></table></figure>
+
+<p><code>GCObject</code>头部信息中使用1B大小的tt字段做为类型标签。
+目前Lua只有9种类型，保留1B的低4bit完全足够表示类型标签，
+那么高4bit用于每种类型特殊的mask，这里<code>TString</code>用以区别短字符串和长字符串。</p>
+<p>Lua区分长字符串和短字符串的原因是防止Hash Dos。
+并且长字符串数据也很难相同，而短字符串数据相同的概率比较高。</p>
+<h3>CommonHeader</h3>
+<p><code>TString</code>和其它<code>GCObject</code> 一样，拥有<code>CommonHeader</code>。
+但需要注意，<code>CommonHeader</code> 中的<code>next</code> 域却和其它类型的单向链表意义不同。</p>
+<p>它被挂接在 stringtable 这个 hash 表中。</p>
+<h3>dummy字段</h3>
+<p><code>dummy</code>字段用来使<code>GCObject</code>字节对齐，使得<code>GCObject</code>至少占一个word大小。</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre><span class="comment">// llimits.h</span>
+<span class="comment">/* type to ensure maximum alignment */</span>
+<span class="preprocessor">#<span class="keyword">if</span> !defined(LUAI_USER_ALIGNMENT_T)</span>
+<span class="preprocessor">#<span class="keyword">define</span> LUAI_USER_ALIGNMENT_T   union { double u; void *s; long l; }</span>
+<span class="preprocessor">#<span class="keyword">endif</span></span>
+   
+typedef LUAI_USER_ALIGNMENT_T L_Umaxalign;
+</pre></td></tr></table></figure>
+
+<h3>extra字段</h3>
+<p><code>extra</code>为0表示字符串没有被hash，大于0表示已经被hash。
+并且在大于0时，如果字符串是短字符串，则保存着保留字或元方法名在stringtable中的下标。</p>
+<h3>hash字段</h3>
+<p>Lua使用hash表(stringtable)保持string类型的引用。
+这样的结果是string不可修改，改变string的操作只是新建了一个string而删除了原来的。
+并且这也保证了系统中不会有值相同的 string 被创建两份。
+每个string的hash值通过一个函数计算并保存在TSting的hash成员中。
+这样保证了string能够快速索引和string之间能快速比较。
+hash值计算函数并不读取整个string，而只读一部分，这样减少了操作长string时的性能损失。</p>
+<p>从外部压入一个长字符串时，简单复制一遍字符串，并不立刻计算其hash值，
+而是标记一下<code>extra</code>字段。直到需要对字符串做键匹配时，才惰性计算<code>hash</code>值，加快以后的键比较过程。</p>
+<p>Lua并没有单独使用内存分配器分配字符串真正的数据，
+而是把字符串数据存储在第一次出现的时的<code>TString</code>结构之后。</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre>// lobject.h <span class="number">422</span>
+/* <span class="keyword">get</span> <span class="keyword">the</span> actual <span class="type">string</span> (array <span class="keyword">of</span> bytes) <span class="keyword">from</span> a TString */
+<span class="comment">#define getstr(ts)      cast(const char *, (ts) + 1)</span>
+</pre></td></tr></table></figure>
+
+<h3>len字段</h3>
+<p><code>len</code>字段保存着字符串的长度。
+由于Lua并不以<code>\n</code>结尾来识别字符串的长度，所以需要记录长度，并且在与C语言交互时，自动添加<code>\0</code>兼容C库。</p>
+<h3>stringtable</h3>
+<p>所有的短字符串保存在<code>global_State</code>的<code>strt</code>字段内。
+<code>strt</code>字段是<code>stringtable</code>类型：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+</pre></td><td class="code"><pre><span class="typedef">typedef struct stringtable <span class="container">{
+   <span class="type">GCObject</span> **<span class="title">hash</span>;
+   <span class="title">lu_int32</span> <span class="title">nuse</span>;  /* <span class="title">number</span> <span class="title">of</span> <span class="title">elements</span> */
+   <span class="title">int</span> <span class="title">size</span>;
+}</span> stringtable;</span>
+</pre></td></tr></table></figure>
+
+<h3>字符串操作</h3>
+<h4>TString创建</h4>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="code"><pre><span class="comment">// lstring.c 98</span>
+<span class="comment">/*
+ ** new string (with explicit length)
+ */</span>
+TString *luaS_newlstr (lua_State *L, <span class="keyword">const</span> <span class="keyword">char</span> *str, size_t l) {
+   <span class="keyword">if</span> (l &lt;= LUAI_MAXSHORTLEN)  <span class="comment">/* short string? */</span>
+     <span class="keyword">return</span> internshrstr(L, str, l);                                     <span class="comment">// 短字符串</span>
+   <span class="keyword">else</span> {
+     <span class="keyword">if</span> (l + <span class="number">1</span> &gt; (MAX_SIZET - <span class="keyword">sizeof</span>(TString))/<span class="keyword">sizeof</span>(<span class="keyword">char</span>))
+       luaM_toobig(L);
+     <span class="keyword">return</span> createstrobj(L, str, l, LUA_TLNGSTR, G(L)-&gt;seed, <span class="literal">NULL</span>);      <span class="comment">// 长字符串</span>
+  }
+}
+</pre></td></tr></table></figure>
+
+<p>长字符串的创建：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre></td><td class="code"><pre><span class="comment">/*
+ ** creates a new string object
+ */</span>
+<span class="keyword">static</span> TString *createstrobj (lua_State *L, <span class="keyword">const</span> <span class="keyword">char</span> *str, size_t l,
+                              <span class="keyword">int</span> tag, <span class="keyword">unsigned</span> <span class="keyword">int</span> h, GCObject **list) {
+   TString *ts;
+   size_t totalsize;  <span class="comment">/* total size of TString object */</span>
+   totalsize = <span class="keyword">sizeof</span>(TString) + ((l + <span class="number">1</span>) * <span class="keyword">sizeof</span>(<span class="keyword">char</span>));  <span class="comment">// TString后紧跟str字符串</span>
+   ts = &luaC_newobj(L, tag, totalsize, list, <span class="number">0</span>)-&gt;ts;   
+   ts-&gt;tsv<span class="variable">.len</span> = l;
+   ts-&gt;tsv<span class="variable">.hash</span> = h;                                        
+   ts-&gt;tsv<span class="variable">.extra</span> = <span class="number">0</span>;                                       <span class="comment">// 0表示hash尚未计算，以后再通过luaS_hash计算</span>
+   memcpy(ts+<span class="number">1</span>, str, l*<span class="keyword">sizeof</span>(<span class="keyword">char</span>));
+   ((<span class="keyword">char</span> *)(ts+<span class="number">1</span>))[l] = <span class="string">'\0'</span>;  <span class="comment">/* ending 0 */</span>              <span class="comment">// Lua中字符串都以\0结束，兼容C库</span>
+   <span class="keyword">return</span> ts;
+}
+</pre></td></tr></table></figure>
+
+<p>参考 ：</p>
+<ul>
+<li>风云 Lua源码欣赏</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Lua/">Lua</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

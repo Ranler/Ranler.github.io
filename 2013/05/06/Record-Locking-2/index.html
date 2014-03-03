@@ -1,0 +1,198 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Record Locking 2 | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="之前分析过record locking/file locking读锁和写锁的概念和Linux API。
+当进程都按加锁的机制访问文件时，记录锁能保证其正确访问。
+但是如果对于同一文件，有的进程加锁访问，有的进程不加锁访问，这种情况操作系统怎样处理？
+因此今天再分析两种记录锁的策略：
+
+协同锁 Adv">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Record Locking 2"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-05-05T16:00:00.000Z"><a href="/2013/05/06/Record-Locking-2/">May 6 2013</a></time>
+      
+      
+  
+    <h1 class="title">Record Locking 2</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>之前分析过record locking/file locking读锁和写锁的概念和Linux API。
+当进程都按加锁的机制访问文件时，记录锁能保证其正确访问。
+但是如果对于同一文件，有的进程加锁访问，有的进程不加锁访问，这种情况操作系统怎样处理？
+因此今天再分析两种记录锁的策略：</p>
+<ul>
+<li>协同锁 Advisory</li>
+<li>强制锁 Mandatory</li>
+</ul>
+<h3>协同锁 Advisory</h3>
+<p>协同锁降低了访问共享文件的限制，使得没有加锁的进程仍然能够访问共享文件。
+也就是说操作系统不对无锁的进程进行限制。
+因此想要正确处理共享文件的访问，需要用户主动提供协同加锁访问的进程。</p>
+<p>大多数UNIX和UNIX-like的操作系统默认提供Advisory类型的锁策略。
+也可以通过修改mount参数提供Mandatory类型的锁策略。</p>
+<p>Java提供了Advisory类型的锁策略。</p>
+<p>通过查看<code>/proc/locks</code>文件可以看到当前操作系统中存在的锁：</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre>&gt;cat /proc/locks
+1: F<span class="operator"><span class="keyword">LOCK</span>  ADVISORY  <span class="keyword">WRITE</span> <span class="number">157</span> <span class="number">00</span>:<span class="number">0</span>e:<span class="number">7976</span> <span class="number">0</span> EOF
+</pre></td></tr></table></figure>
+
+<p>第二列说明了当前锁的策略，第三列说明锁的类型。</p>
+<h3>强制锁 Mandatory</h3>
+<p>强制锁利用操作系统对共享文件的访问做限制，使得无锁进程不能访问加锁的共享文件（阻塞）。
+操作系统在此做强制性限制。</p>
+<p>Microsoft操作系统提供Mandatory类型的锁策略。</p>
+<h3>单实例程序</h3>
+<p>文件锁可以用来实现单实例程序，如单实例的daemon。
+这通常放在<code>/var/run</code>目录下，以<code>.pid</code>结尾。</p>
+<h3>Reference</h3>
+<ol>
+<li><p>www.thegeekstuff.com/2012/04/linux-file-locking-types/</p>
+</li>
+<li><p>Java NIO Book</p>
+</li>
+</ol>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

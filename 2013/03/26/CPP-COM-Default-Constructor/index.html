@@ -1,0 +1,196 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>CPP Object Model Constructor | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="如果没有定义任何constructor, 编译器将生成一个implicit default constructor.
+但是这个implicit default constructor只会去做编译器需要做的事,不会去做多余的事情(trivial).
+比如如果class的member variables">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="CPP Object Model Constructor"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-03-25T16:00:00.000Z"><a href="/2013/03/26/CPP-COM-Default-Constructor/">Mar 26 2013</a></time>
+      
+      
+  
+    <h1 class="title">CPP Object Model Constructor</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>如果没有定义任何constructor, 编译器将生成一个implicit default constructor.</p>
+<p>但是这个implicit default constructor只会去做编译器需要做的事,不会去做多余的事情(trivial).
+比如如果class的member variables都是基本类型, 那么这个default constructor将什么都不干,
+<strong>不会去初始化基本类型</strong>.</p>
+<p>implicit default constructor只会在以下几种情况下会隐式调用(nontrivial):</p>
+<h5>1. class有 “带有default constructor的member class object”</h5>
+<p>编译器为class合成inline default constructor(每个文件module可见)
+或explicit non-inline static default constructor(每个文件module可见)。
+这个合成在真正被调用时发生.</p>
+<p>如果class A有一个或以上的member class objects, 
+那么class A的每一个constructor必需调用每一个member classes的default constructor.
+编译器会<strong>扩张</strong>已存在的constructors, 在其中安插一些代码, 
+使得user code被执行<strong>之前</strong>, 先调用必要的default constructor.</p>
+<p>CPP要求member object在class中以<strong>声明顺序</strong>调用各个constructor,
+和初始化列表的顺序无关.</p>
+<p><strong>总结:任何类型constructor,在进入user code之前必需调用member class object
+的constructor进行初始化,或在初始化列表里显式调用(可以调用任何constructor), 或由编译器隐式调用(此时只能调用default constructor).调用的顺序是member class object的声明顺序.
+基本类型的member variable无需初始化.</strong></p>
+<h5>2. class有 “带有default constructor的base class”</h5>
+<p><strong>任何类型constructor,在进入user code之前必需调用base class的constructor进行初始化,
+或在初始化列表里显式调用(可以调用任何constructor), 或由编译器隐式调用(此时只能调用default constructor).调用的顺序是base class的声明顺序.</strong></p>
+<p>base class的初始化在member class object<strong>之前</strong>.</p>
+<h5>3. class有 virtual function</h5>
+<p>class声明或继承一个virtual function后, 
+需要编译器在constructor中调整object的vptr指向class的vtbl.</p>
+<p>因此, <strong>对于含有virtual function的class的任何类型constructor,
+必需对vptr进行初始化, 这是由编译器隐式完成.
+</strong></p>
+<p>virtual function在constructors中被静态决议，virtual机制不起作用。
+vptr是在base constructor之后，在member init list之前进行初使化的。</p>
+<h5>4. class继承了 virtual base class</h5>
+<p>如果class派生自一个继承串链, 其中有一个或多个的virtual base class,
+则需要编译器为virtual base class的共享做些操作。</p>
+<p>因此，<strong>对于含有virtual base class的class的任何类型constructor,
+必需对virtual base class的共享进行初始化，这是由编译器隐式完成。</strong></p>
+<p>上面所述的4条编译器的职责, 如果用户定义了constructor, 则扩展用户定义的constructor去完成,
+否则在第一次调用时隐式合成一个default constructor去完成。
+如果没有上述4种情况又没有声明任何constructor的class，它的default constructor实际上并不会合成出来。</p>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/C&CPP/">C&CPP</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

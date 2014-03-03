@@ -1,0 +1,197 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Storage 3: Production | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="1. 磁盘阵列
+JBOD/磁盘柜/磁盘阵列
+内部接口：内部RAID控制器可接IDE磁盘，SCSI磁盘，SATA磁盘和FC磁盘。
+如果是SCSI磁盘，连接RAID控制器的SCSI控制器可以有多个总线，
+每个SCSI总线目前最多可以有32个Physical Disk，
+每个Physical Disk有一">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Storage 3: Production"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-08-07T16:00:00.000Z"><a href="/2013/08/08/Storage-3/">Aug 8 2013</a></time>
+      
+      
+  
+    <h1 class="title">Storage 3: Production</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <h3>1. 磁盘阵列</h3>
+<p>JBOD/磁盘柜/磁盘阵列</p>
+<p>内部接口：内部RAID控制器可接IDE磁盘，SCSI磁盘，SATA磁盘和FC磁盘。
+如果是SCSI磁盘，连接RAID控制器的SCSI控制器可以有多个总线，
+每个SCSI总线目前最多可以有32个Physical Disk，
+每个Physical Disk有一个SCSI ID。</p>
+<p>外部接口：外部接口是连接主机的接口，有SCSI接口、FC接口。
+外部接口可以有多个SCSI接口，连接多个主机的SCSI接口。
+磁盘阵列对外划分出多个Logical Disk，每个Logical Disk有一个LUN。
+每个LUN可以分配到一个或多个外部接口。</p>
+<p>为了防止SPOF(Single Point Of Failure)，高端磁盘阵列配置了两个控制器。
+它们之间有多种工作模式，如Active-Standby,Dual-Active模式。</p>
+<p>盘阵类型(后端-前端)：</p>
+<ul>
+<li>SCSI-SCSI</li>
+<li>SCSI-FC</li>
+<li>SATA-FC</li>
+<li>FC-FC 最高端</li>
+</ul>
+<h3>2. Direct Attached Storage (DAS)</h3>
+<p>传统主机内的磁盘或只有一个SCSI接口的JBOD。</p>
+<h3>3. Network Attached Storage (NAS)</h3>
+<p>NAS以文件服务器的形式提供服务（如NFS, CIFS）。
+它是网络上的一个文件系统，客户以文件为目标进行访问。</p>
+<p>NAS不一定需要磁盘阵列，普通的主机就可以做NAS，只要提供NFS或CIFS服务，如Windows的文件共享。
+NAS常常通过TCP/IP议和以太网端口连接主机端口。</p>
+<h3>4. Storage Area Network (SAN)</h3>
+<p>SAN是一种网络。
+如果由多个NAS通过以太网交换机组成网络，理论上也可以称为SAN。
+但目前SAN指的更多的是前面小节讲述的FC网络。</p>
+<p>NAS和SAN也常常融合起来使用，
+把SAN中磁盘作为SAN的存储，再通过SAN向客户提供服务。</p>
+<ul>
+<li>FC SAN(FC): 快，稳定，高端市场</li>
+<li>IP SAN(iSCSI): 成本低，可扩展，低端市场</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Storage/">Storage</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

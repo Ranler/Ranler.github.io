@@ -1,0 +1,530 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>JVM Instruction Set Example 2 | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="这次看一下String和常量池相关的操作。
+ldc指令，把运行时常量池(runtime constant pool)中的元素压入操作栈。
+压入元素的类型由常量池中元素类型决定：
+
+如果常量池中的元素是int/float类型，那么压入的类型是float/int
+如果是String类型的referenc">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="JVM Instruction Set Example 2"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-04-25T16:00:00.000Z"><a href="/2013/04/26/JVM-Instruction-EX2/">Apr 26 2013</a></time>
+      
+      
+  
+    <h1 class="title">JVM Instruction Set Example 2</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>这次看一下String和常量池相关的操作。</p>
+<p><code>ldc</code>指令，把运行时常量池(runtime constant pool)中的元素压入操作栈。
+压入元素的类型由常量池中元素类型决定：</p>
+<ul>
+<li>如果常量池中的元素是int/float类型，那么压入的类型是float/int</li>
+<li>如果是String类型的reference，那么压入其String对象的reference</li>
+<li>如果是class类型的symbolic reference，那么压入其class对象的reference</li>
+<li>如果是method type/handler的symbolic reference，那么压入其MethodType/MethodHandle对象的reference</li>
+</ul>
+<p>可以看到压入的共两种类型：数值类型或reference类型</p>
+<h3>Example 2.1</h3>
+<p>又是一个经典笔试题：</p>
+<figure class="highlight lang-java"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre>    <span class="keyword">void</span> f1() {
+	String s1 = <span class="string">"abc"</span>;
+	String s2 = <span class="string">"abc"</span>;
+
+	String s3 = <span class="keyword">new</span> String(<span class="string">"abc"</span>);
+	String s4 = <span class="keyword">new</span> String(<span class="string">"abc"</span>);
+
+	System.out.println(s1 == s2);
+	System.out.println(s3 == s4);
+    }
+</pre></td></tr></table></figure>
+
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+</pre></td><td class="code"><pre>  void f1();
+    Code:
+       <span class="number">0</span>: ldc           <span class="string">#7</span>     <span class="comment">// String abc;常量池中取出其ref</span>
+       <span class="number">2</span>: astore_1             <span class="comment">// (String s1 = "abc";)</span>
+	   
+	   
+       <span class="number">3</span>: ldc           <span class="string">#7</span>     <span class="comment">// String abc;常量池中取出其ref</span>
+       <span class="number">5</span>: astore_2             <span class="comment">// (String s2 = "abc";)</span>
+	   
+	   
+       <span class="number">6</span>: new           <span class="string">#8</span>     <span class="comment">// class java/lang/String;创建新的对象并返回ref</span>
+       <span class="number">9</span>: dup           
+      <span class="number">10</span>: ldc           <span class="string">#7</span>     <span class="comment">// String abc</span>
+      <span class="number">12</span>: invokespecial <span class="string">#9</span>     <span class="comment">// Method java/lang/String."&lt;init&gt;":(Ljava/lang/String;)V</span>
+      <span class="number">15</span>: astore_3             <span class="comment">// (String s3 = new String("abc");)</span>
+	  
+	  
+      <span class="number">16</span>: new           <span class="string">#8</span>     <span class="comment">// class java/lang/String;创建新的对象并返回ref</span>
+      <span class="number">19</span>: dup           
+      <span class="number">20</span>: ldc           <span class="string">#7</span>     <span class="comment">// String abc</span>
+      <span class="number">22</span>: invokespecial <span class="string">#9</span>     <span class="comment">// Method java/lang/String."&lt;init&gt;":(Ljava/lang/String;)V</span>
+      <span class="number">25</span>: astore        <span class="number">4</span>      <span class="comment">// (String s4 = new String("abc"));</span>
+	  
+	  
+      <span class="number">27</span>: getstatic     <span class="string">#10</span>    <span class="comment">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+      <span class="number">30</span>: aload_1       
+      <span class="number">31</span>: aload_2       
+      <span class="number">32</span>: if_acmpne     <span class="number">39</span>     <span class="comment">// (s1 == s2;)，比较了其引用值</span>
+      <span class="number">35</span>: iconst_1      
+      <span class="number">36</span>: <span class="keyword">goto</span>          <span class="number">40</span>
+      <span class="number">39</span>: iconst_0      
+      <span class="number">40</span>: invokevirtual <span class="string">#11</span>    <span class="comment">// Method java/io/PrintStream.println:(Z)V</span>
+	  
+	  
+      <span class="number">43</span>: getstatic     <span class="string">#10</span>    <span class="comment">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+      <span class="number">46</span>: aload_3       
+      <span class="number">47</span>: aload         <span class="number">4</span>
+      <span class="number">49</span>: if_acmpne     <span class="number">56</span>     <span class="comment">// (s3 == s4;)，比较了其引用值</span>
+      <span class="number">52</span>: iconst_1      
+      <span class="number">53</span>: <span class="keyword">goto</span>          <span class="number">57</span>
+      <span class="number">56</span>: iconst_0      
+      <span class="number">57</span>: invokevirtual <span class="string">#11</span>    <span class="comment">// Method java/io/PrintStream.println:(Z)V</span>
+      <span class="number">60</span>: return
+</pre></td></tr></table></figure>
+
+<p>“123”和“456”作为当前类的常量池中成员，在class加载到JVM是已经有对象了。
+因此s1,s2分别获得了它们的ref。</p>
+<p>只要有<code>new</code>指令就会在heap中申请内存，从而有一个新的对象实例，新的ref。
+因此，这段程序的输出是：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="title">true</span>
+<span class="built_in">false</span>
+</pre></td></tr></table></figure>
+
+<h3>Example 2.2</h3>
+<figure class="highlight lang-java"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre>    <span class="keyword">void</span> f2() {
+	String s1 = <span class="string">"12"</span> + <span class="string">"3"</span>;
+	String s2 = <span class="string">"456"</span>;
+	String s3 = s1 + s2;
+	String s4 = s1 + s2 + s3;	
+    }
+</pre></td></tr></table></figure>
+
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+</pre></td><td class="code"><pre>  void f2();
+    Code:
+       <span class="number">0</span>: ldc           <span class="string">#12</span>    <span class="comment">// String 123</span>
+       <span class="number">2</span>: astore_1             <span class="comment">// (String s1 = "12" + "3";),可以看出编译阶段可以优化字符串</span>
+	   
+	   
+       <span class="number">3</span>: ldc           <span class="string">#13</span>    <span class="comment">// String 456</span>
+       <span class="number">5</span>: astore_2             <span class="comment">// (String s1 = "456";)</span>
+	   
+	   
+       <span class="number">6</span>: new           <span class="string">#14</span>    <span class="comment">// class java/lang/StringBuilder</span>
+       <span class="number">9</span>: dup           
+      <span class="number">10</span>: invokespecial <span class="string">#15</span>    <span class="comment">// Method java/lang/StringBuilder."&lt;init&gt;":()V</span>
+      <span class="number">13</span>: aload_1       
+      <span class="number">14</span>: invokevirtual <span class="string">#16</span>    <span class="comment">// Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+      <span class="number">17</span>: aload_2       
+      <span class="number">18</span>: invokevirtual <span class="string">#16</span>    <span class="comment">// Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+      <span class="number">21</span>: invokevirtual <span class="string">#17</span>    <span class="comment">// Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+      <span class="number">24</span>: astore_3             <span class="comment">// (String s3 = s1 + s2;)</span>
+	  
+	  
+      <span class="number">25</span>: new           <span class="string">#14</span>    <span class="comment">// class java/lang/StringBuilder</span>
+      <span class="number">28</span>: dup           
+      <span class="number">29</span>: invokespecial <span class="string">#15</span>    <span class="comment">// Method java/lang/StringBuilder."&lt;init&gt;":()V</span>
+      <span class="number">32</span>: aload_1       
+      <span class="number">33</span>: invokevirtual <span class="string">#16</span>    <span class="comment">// Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+      <span class="number">36</span>: aload_2       
+      <span class="number">37</span>: invokevirtual <span class="string">#16</span>    <span class="comment">// Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+      <span class="number">40</span>: aload_3       
+      <span class="number">41</span>: invokevirtual <span class="string">#16</span>    <span class="comment">// Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+      <span class="number">44</span>: invokevirtual <span class="string">#17</span>    <span class="comment">// Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+      <span class="number">47</span>: astore        <span class="number">4</span>      <span class="comment">// (String s4 = s1 + s2 + s3;)</span>
+      <span class="number">49</span>: return
+</pre></td></tr></table></figure>
+
+<p>每个String对象保存的字符串是不会改变的。
+改变String只会新建一个新的String对象。</p>
+<p>上段代码可以看出，对于通过<code>+</code>来进行多个字符串的拼接操作，
+Oracle JDK是通过StringBuilder来实现的，
+这也是一种高效的做法。
+相比于StringBuffer，StringBuilder也免去了sync的代价。
+(StringBuffer只是给StringBuilder的绝大部份方法添加了synchronized)
+但是这里并没有复用StringBuilder，
+每个子符串连接的Java语句都要new一个新的StringBuilder对象，
+这也是这种<code>+</code>操作耗时的地方。</p>
+<h3>Example 2.3</h3>
+<p>这个例子看看String.intern()。</p>
+<figure class="highlight lang-java"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre>    <span class="keyword">void</span> f3() {
+	String s1 = <span class="string">"123"</span>;
+	String s2 = <span class="keyword">new</span> String(<span class="string">"123"</span>);
+
+	System.out.println(s1 == s2);
+	System.out.println(s1.intern() == s2.intern());
+	System.out.println(s1 == s1.intern());
+	System.out.println(s2 == s2.intern());
+	System.out.println(s1 == s2.intern());
+    }
+</pre></td></tr></table></figure>
+
+<p>指令码就不贴了，和上面没什么区别。</p>
+<p>String.intern()的实现通过JNI由本地代码实现的，
+其功能是在字符串常量池中查找与当前字符串字面值相等的字符串，
+返回其在字符串常量池中的引用。
+如果不存在，则加入后返回。
+因此调用String.intern()可能会扩充字符串常量池。</p>
+<figure class="highlight lang-java"><table><tr><td class="gutter"><pre>1
+</pre></td><td class="code"><pre><span class="keyword">public</span> naive String intern();
+</pre></td></tr></table></figure>
+
+<p>字面值相同的字符串调用intern()都会获得同一字符串对象的引用。</p>
+<p><a href="http://stackoverflow.com/questions/10624232/performance-penalty-of-string-intern" target="_blank">这个页面</a>里的测试说明intern()的调用是及其昂贵的，
+大概是O(n)的算法复杂度，n是字符串常量池的大小。</p>
+<p>这段代码的结果是：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+</pre></td><td class="code"><pre><span class="title">false</span>
+<span class="built_in">true</span>
+<span class="built_in">true</span>
+<span class="built_in">false</span>
+<span class="built_in">true</span>
+</pre></td></tr></table></figure>
+
+<p>s1开始就获得了字符串常量池中的对象，因此s1和s1.intern()都是同一对象的引用值，
+结果相等。</p>
+<h3>Example 2.4</h3>
+<p>最后比较下StringBuilder复用和·+·直接拼接的效率：</p>
+<figure class="highlight lang-java"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+</pre></td><td class="code"><pre><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestStrBuilder</span> {</span>
+	<span class="keyword">static</span> String s1 = <span class="string">"1"</span>;
+	<span class="keyword">static</span> String s2 = <span class="string">"2"</span>;
+	<span class="keyword">static</span> String s3 = <span class="string">"3"</span>;
+	<span class="keyword">static</span> String s4 = <span class="string">"4"</span>;
+	<span class="keyword">static</span> String s5 = <span class="string">"5"</span>;
+	<span class="keyword">static</span> String s6 = <span class="string">"6"</span>;
+	
+	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> main(String[] args) {
+		f1(<span class="number">10000000</span>);
+		f2(<span class="number">10000000</span>);
+		f1(<span class="number">100000000</span>);
+		f2(<span class="number">100000000</span>);
+	}
+	
+	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> f1(<span class="keyword">long</span> time) {
+		<span class="keyword">long</span> cost = System.nanoTime();
+		<span class="keyword">for</span> (<span class="keyword">long</span> i = <span class="number">0</span>; i &lt; time; i++) {
+			String s = s1 + s2 + s3 + s4 + s5 + s6 + s5 + s4 + s3 + s2 + s1;			
+		}
+		cost = System.nanoTime() - cost;
+		System.out.println(cost / <span class="number">1000000</span>);
+	}
+	
+	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> f2(<span class="keyword">long</span> time) {
+		StringBuilder sb = <span class="keyword">new</span> StringBuilder();
+		<span class="keyword">long</span> cost = System.nanoTime();
+		<span class="keyword">for</span> (<span class="keyword">long</span> i = <span class="number">0</span>; i &lt; time; i++) {
+			sb.append(s1).append(s2).append(s3).append(s4).append(s5).append(s6);
+			sb.append(s5).append(s4).append(s3).append(s2).append(s1);
+			String s = sb.toString();
+			sb.delete(<span class="number">0</span>, sb.length());
+		}
+		cost = System.nanoTime() - cost;
+		System.out.println(cost / <span class="number">1000000</span>);		
+	}
+}
+`
+</pre></td></tr></table></figure>
+
+<p>在OpenJDK 1.7.0_21 64bit下结果是：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+</pre></td><td class="code"><pre><span class="number">1465</span>
+<span class="number">1230</span>
+<span class="number">13044</span>
+<span class="number">10681</span>
+</pre></td></tr></table></figure>
+
+<p>大概复用StringBuilder时效率提高了17%。</p>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/JVM/">JVM</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

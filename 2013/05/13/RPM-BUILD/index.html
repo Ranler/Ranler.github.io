@@ -1,0 +1,248 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>RPM Build | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="RPM build steps:
+
+set up a directory hierarchy per the rpmbuild specifications
+place sources and supplemental files in the proper locations in the hie">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="RPM Build"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-05-12T16:00:00.000Z"><a href="/2013/05/13/RPM-BUILD/">May 13 2013</a></time>
+      
+      
+  
+    <h1 class="title">RPM Build</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>RPM build steps:</p>
+<ol>
+<li>set up a directory hierarchy per the <code>rpmbuild</code> specifications</li>
+<li>place sources and supplemental files in the proper locations in the hierarchy</li>
+<li>create <code>spec</code> file</li>
+<li>build the RPM</li>
+</ol>
+<h3>step 1: build the hierarchy</h3>
+<p>Standard hierarchy contains five subdirectories:</p>
+<ul>
+<li>SOURCES(<code>%_sourcedir</code>): contains source files</li>
+<li>SPECS(<code>%_specdir</code>): contains spec files - one spece file per RPM you want to build</li>
+<li>BUILD(<code>%_builddir</code>): space to compile the sources</li>
+<li>BUILDROOT(<code>%_buildrootdir</code>): files are installed under here</li>
+<li>RPMS(<code>%_rpmdir</code>): contains binary PRM that the <code>rpmbuild</code> builds</li>
+<li>SRPMS(<code>%_srcrpmdir</code>): contains the source RPM built during the process</li>
+</ul>
+<p>There at least need SOURCES and a spec file in SPECS.</p>
+<h3>step 2: copy the sources and files to SOURCES</h3>
+<p>Copy the sources, ideally bundled as a tarball, into the SOURCES directory.
+The name of sources tarball is <code>package-version.tar.gz</code> is better.</p>
+<h3>step 3: create <code>spec</code> file</h3>
+<p>A <code>spec</code> file is nothing more than a text file with a special syntax.
+But it is the key file for create rpm.
+All configuration, commands and informations about create, install and uninstall rpms are defined in this file.</p>
+<p>The simplest way to build rpm is:</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="blockquote">&gt; cd ~/rpmbuild/SPECS</span>
+<span class="blockquote">&gt; touch NAME.spec</span>
+</pre></td></tr></table></figure>
+
+<p><code>rpmbuild</code> will read <code>Name.spec</code> file and go throught in order the stages listed below:</p>
+<ul>
+<li><code>%prep</code>(<code>%_sourcedir</code>-&gt;<code>%_builddir</code>)</li>
+<li><code>%build</code>(<code>%_builddir</code>-&gt;<code>%_builddir</code>)</li>
+<li><code>%check</code>(<code>%_builddir</code>-&gt;<code>%_builddir</code>)</li>
+<li><code>%install</code>(<code>%_builddir</code>-&gt;<code>%_buildrootdir</code>)</li>
+<li>bin(<code>%_buildrootdir</code>-&gt;<code>%_rpmdir</code>)</li>
+<li>src(<code>%_sourcedir</code>-&gt;<code>%_srcrpmdir</code>)</li>
+</ul>
+<h5><code>%prep</code></h5>
+<p>This section describes how to unpack the compressed packages so that they can be built. Normally this section includes two macros:</p>
+<ul>
+<li><code>%setup</code> macro is used to unpack the original sources.</li>
+<li><code>%patch</code> macro is used to apply patches to the original source.</li>
+</ul>
+<h5><code>%build</code></h5>
+<p>This section describes how to configure and compile/build the files to be installed. Many programs use <code>configure</code> approach to config the sources, so:</p>
+<ul>
+<li><code>%configure</code> macro is used to automatically invoke the correct options.</li>
+</ul>
+<p>and use <code>make</code> to compile files.</p>
+<h5><code>%install</code></h5>
+<p>This section creates directories and copy relavant files from <code>%_builddir</code> to <code>%buildroot</code>. Normally, some variation of <code>make install</code> is performed here.</p>
+<h5><code>%files</code></h5>
+<p>This section declares which files and directories are owned by the package, and thus which files and directories will be placed into binary RPM.</p>
+<ul>
+<li><code>%defattr</code> macro set the default file permissions, and is often found at the start of the<code>%files</code> section. Note that this is no longer necessary unless the permissions need to be altered.</li>
+</ul>
+<h5>Scriptlets</h5>
+<p>Scriptlets can be run:</p>
+<ul>
+<li>before(<code>%pre</code>) or after(<code>%post</code>) a package is installed</li>
+<li>before(<code>%preun</code>) or after(<code>%postun</code>) a package is uninstalled</li>
+<li>at the start(<code>%pretrans</code>) or end(<code>%posttrans</code>) of a transcation</li>
+</ul>
+<p>The order of operations during the upgrade is:</p>
+<ol>
+<li>Run the <code>%pre</code> of the RPM being installed</li>
+<li>Install the files that RPM provides</li>
+<li>Run the <code>%post</code> of RPM</li>
+<li>Run the <code>%preun</code> of the old package</li>
+<li>Delete any old files not overwritten by the newer version.</li>
+<li>Run the <code>%postun</code> of the old package</li>
+</ol>
+<h3>step4: build the RPM</h3>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+</pre></td><td class="code"><pre><span class="title">rpmbuild</span> -ba NAME.spec
+</pre></td></tr></table></figure>
+
+<h3>Reference</h3>
+<ul>
+<li><a href="http://www.ibm.com/developerworks/linux/library/l-rpm3/index.html" target="_blank">http://www.ibm.com/developerworks/linux/library/l-rpm3/index.html</a></li>
+<li><a href="https://fedoraproject.org/wiki/How_to_create_an_RPM_package" target="_blank">https://fedoraproject.org/wiki/How_to_create_an_RPM_package</a></li>
+<li><a href="http://www.redhat.com/mirrors/LDP/HOWTO/RPM-HOWTO/" target="_blank">http://www.redhat.com/mirrors/LDP/HOWTO/RPM-HOWTO/</a></li>
+<li><a href="http://www.redhat.com/promo/summit/2008/downloads/pdf/Wednesday_130pm_Tom_Callaway_OSS.pdf" target="_blank">http://www.redhat.com/promo/summit/2008/downloads/pdf/Wednesday_130pm_Tom_Callaway_OSS.pdf</a></li>
+<li><a href="http://rpm.org/max-rpm-snapshot/" target="_blank">http://rpm.org/max-rpm-snapshot/</a></li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

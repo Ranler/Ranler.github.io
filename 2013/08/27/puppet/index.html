@@ -1,0 +1,286 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Puppet | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="Puppet用于集群中主机的管理。
+Puppet是C/S结构，由服务端保存客户端的配置代码manifests(*.pp)
+然后由客户端访问服务端，获取配置代码，在客户端执行。
+Puppet中管理的对象都被看做Resource.
+Puppet的配置语言是面向结果的语言，和SQL一样，只要说明Resou">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Puppet"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-08-26T16:00:00.000Z"><a href="/2013/08/27/puppet/">Aug 27 2013</a></time>
+      
+      
+  
+    <h1 class="title">Puppet</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>Puppet用于集群中主机的管理。
+Puppet是C/S结构，由服务端保存客户端的配置代码manifests(*.pp)
+然后由客户端访问服务端，获取配置代码，在客户端执行。</p>
+<p>Puppet中管理的对象都被看做Resource.
+Puppet的配置语言是面向结果的语言，和SQL一样，只要说明Resource想要达到的状态，而不用说明达到这个状态的方式。
+Resources的声明:</p>
+<pre><code>file { <span class="string">'/etc/passwd'</span>:           <span class="comment"># TYPE and TITLE</span>
+    path =&gt; <span class="string">'/etc/passwd'</span>,      <span class="comment"># ARRIBUTES and VALUES</span>
+    owner =&gt; root,              <span class="comment"># ARRIBUTES and VALUES</span>
+    group =&gt; root,              <span class="comment"># ARRIBUTES and VALUES</span>
+    mode =&gt; <span class="number">644</span>,                <span class="comment"># ...</span>
+}
+
+file { <span class="string">'sshdconfig'</span>:
+    path =&gt; <span class="variable">$operatingsystem</span> ? {
+        solaris =&gt; <span class="string">"/usr/local/etc/ssh/sshd_config"</span>,
+        <span class="keyword">default</span> =&gt; <span class="string">"/etc/ssh/sshd_config"</span>
+    },
+    owner =&gt; root,
+    group =&gt; root,
+    mode =&gt; <span class="number">644</span>,
+}</code></pre>
+<p>以上是file类型Resources。
+Puppet内建的Resources类型有：</p>
+<ul>
+<li>file</li>
+<li>package</li>
+<li>service</li>
+<li>notify</li>
+<li>cron</li>
+<li>user</li>
+<li>…</li>
+</ul>
+<p>各个资源之间的关系是独立的，执行起来并不是按照其在manifest中定义的顺序。
+如果想在资源之间建立关系，可以使用下面四个元属性：</p>
+<ul>
+<li>require: 依赖关系，后于依赖资源执行</li>
+<li>before: 依赖关系，先于依赖资源执行</li>
+<li>subscribe: 通知关系，在依赖资源刷新后重新执行</li>
+<li>notify: 通知关系，在刷新后通知依赖资源</li>
+</ul>
+<p>引用资源类型的第一个字母要大写：</p>
+<pre><code>file {<span class="string">'/tmp/test1'</span>:
+    ensure =&gt; present,
+    content =&gt; <span class="string">"Hi."</span>,
+}
+notify {<span class="string">'/tmp/test1 has already been synced.'</span>:
+    <span class="keyword">require</span> =&gt; File[<span class="string">'/tmp/test1'</span>],                    <span class="comment"># resource reference</span>
+}</code></pre>
+<p>还可以在资源定义之间使用<code>-&gt;</code>和<code>~&gt;</code>表示依赖关系和通知关系。</p>
+<p>下面是一个常见的package/file/service模式：</p>
+<pre><code>package { <span class="string">'openssh-server'</span>:
+    ensure =&gt; present,
+    before =&gt; File[<span class="string">'/etc/ssh/sshd_config'</span>],
+}
+file { <span class="string">'/etc/ssh/sshd_config'</span>:
+    ensure =&gt; file,
+    mode =&gt; <span class="number">600</span>,
+    source =&gt; <span class="string">'/root/examples/sshd_config'</span>,
+}
+service { <span class="string">'sshd'</span>:
+    ensure =&gt; running,
+    enable =&gt; <span class="keyword">true</span>,
+    subscribe =&gt; File[<span class="string">'/etc/ssh/sshd_config'</span>],
+}</code></pre>
+<h3>Command</h3>
+<p>执行：</p>
+<pre><code><span class="title">puppet</span> <span class="type">CFG_FILE</span>.pp
+<span class="title">puppet</span> <span class="comment">--server SERVER_HOST_NAME</span></code></pre>
+<p>Resource命令：</p>
+<pre><code>puppet resource &lt;TYPE&gt; [&lt;NAME&gt;] [ATTRIBUTE=VALUE <span class="keyword">...</span>]    <span class="comment"># create resources</span>
+puppet apply *.pp    <span class="comment"># client run manifests</span></code></pre>
+<p>Puppet自动把多个manifest文件编译成catalog，然后执行。</p>
+<ul>
+<li>类表示一组资源。</li>
+<li>函数表示带参数、可执行的exec资源，用于定义新的资源类型。</li>
+<li>节点用来定义不同客户端上不同的资源。</li>
+<li>变量和数组</li>
+<li>模块用于结构化代码，包含files(文件发布目录),manifests(以init.pp开始),templates(erb模型)</li>
+</ul>
+<h3>Variables, Conditionals, and Facts</h3>
+<ul>
+<li>变量： <code>$varible = &quot;abc&quot;</code>；</li>
+<li>常量： 内建、预赋值的变量，如<code>${ipaddress_eth0}</code>，由factor提供；</li>
+</ul>
+<p>条件：<code>if</code></p>
+<pre><code><span class="keyword">if</span> condition {
+    <span class="keyword">block</span> <span class="keyword">of</span> code
+}
+elsif condition {
+    <span class="keyword">block</span> <span class="keyword">of</span> code
+}
+<span class="keyword">else</span> {
+    <span class="keyword">block</span> <span class="keyword">of</span> code
+}</code></pre>
+<p>条件：<code>case</code></p>
+<pre><code><span class="keyword">case</span> <span class="variable">$operatingsystem</span> {
+    centos: { <span class="variable">$apache</span> =<span class="string">"httpd"</span>    }
+    <span class="comment"># that these matches are case-insensitive.</span>
+    <span class="comment"># regex is OK</span>
+    redhat: { <span class="variable">$apache</span> = <span class="string">"httpd"</span> }
+    debian, ubuntu: { <span class="variable">$apache</span> = <span class="string">"apache2"</span> }
+    <span class="keyword">default</span>: { fail(<span class="string">"Unrecognized operating system for webserver"</span>)    }
+}
+package {<span class="string">'apache'</span>:
+    name =&gt; <span class="variable">$apache</span>,
+    ensure =&gt; latest,
+}</code></pre>
+<p>条件： Selectors三元操作符</p>
+<pre><code><span class="variable">$apache</span> = <span class="variable">$operatingsystem</span> ? {
+    centos =&gt; <span class="string">'httpd'</span>,
+    redhat =&gt; <span class="string">'httpd'</span>,
+    /(?i)(ubuntu|debian)/ =&gt; <span class="string">'apache2'</span>,
+    <span class="keyword">default</span> =&gt; undef,
+}</code></pre>
+<h3>Modules and Classes</h3>
+<p>定义资源时可以指定provider。</p>
+<ul>
+<li>file<ul>
+<li>source属性指定文件来源，或用content属性指定文件内容。</li>
+<li>template命令可通过erb模板生成文件内容。</li>
+</ul>
+</li>
+<li>package</li>
+<li>service</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Cluster/">Cluster</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

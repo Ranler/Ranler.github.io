@@ -1,0 +1,619 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Remote Process Call | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="之前见到的RPC都是Remote Procedure Call，
+比如Java的RMI(Remote Method Invocation)。
+而最近的项目使用了Remote Process Call/远程程序调用，
+也就是用主机A调用主机B上的程序，并返回执行结果。
+这有些类似SSH的功能，只不过没">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Remote Process Call"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-04-18T16:00:00.000Z"><a href="/2013/04/19/Remote-Process-Call/">Apr 19 2013</a></time>
+      
+      
+  
+    <h1 class="title">Remote Process Call</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>之前见到的RPC都是Remote Procedure Call，
+比如Java的RMI(Remote Method Invocation)。
+而最近的项目使用了Remote Process Call/远程程序调用，
+也就是用主机A调用主机B上的程序，并返回执行结果。
+这有些类似SSH的功能，只不过没有SSH的加密功能。
+今天分析的都是这种RPC。</p>
+<p>单一主机内的IPC(Inter-Process Communication)常常利用PIPE,FIFO机制实现。
+而跨主机IPC都是通过网络来进行的。
+因此，RPC作为IPC的一种应用，常常利用Socket机制来实现。
+主机A上的请求进程使用Socket发送请求，
+主机B上的服务进程使用Socket接收请求，执行请求，并使用Socket返回请求结果。</p>
+<p>作为两个远程进程之间的通信，他们必需商定一种协议相互配合完成RPC。
+这个协议就是对请求的封装，封装成双方都认识的数据结构，从而能了解对方的意图。
+一个对远程程序调用的请求可以用以下数据结构简单表示：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+</pre></td><td class="code"><pre><span class="keyword">struct</span> RemoteProcessCall {
+	<span class="keyword">char</span> cmd[<span class="number">256</span>];       <span class="comment">// 命令字符串，带参数</span>
+	<span class="keyword">char</span> <span class="keyword">stdout</span>[<span class="number">10240</span>];  <span class="comment">// 命令STDOUT输出</span>
+};
+</pre></td></tr></table></figure>
+
+<p>这几乎是一个最简单的RPC数据结构，
+没有STDIN，STDOUT，STDERR部份信息，命令和参数也合在了一起，并有一个最大长度上限。
+请求进程只需把需要执行的命令填入cmd部份，
+服务进程在其主机上执行这个命令，并获得程序的STDOUT填入stdout数组，返回即可。
+请求结构和返回结构不一定使用同一个数据结构。
+可以使用两个数据结构，一个表示请求，一个表示返回，防止冗余，并映射到使用同一个ID号即可。</p>
+<p>有了PRC数据结构, 下面考虑怎样在两个主机上发送和接收。
+首先定义一个头文件包含使用的公共数据结构：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="code"><pre><span class="preprocessor">#ifndef _RPC_H_</span>
+<span class="preprocessor">#define _PRC_H_</span>
+
+<span class="keyword">struct</span> RemoteProcessCall {
+  <span class="keyword">char</span> cmd[<span class="number">256</span>];
+  <span class="keyword">char</span> <span class="keyword">stdout</span>[<span class="number">10240</span>];
+};
+
+<span class="preprocessor">#define RPCHOST "127.0.0.1"</span>
+<span class="preprocessor">#define RPCPORT 8081</span>
+
+<span class="preprocessor">#endif</span>
+</pre></td></tr></table></figure>
+
+<p>然后考虑较简单的请求进程：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+</pre></td><td class="code"><pre><span class="preprocessor">#include &lt;stdio.h&gt;</span>
+<span class="preprocessor">#include &lt;string.h&gt;</span>
+<span class="preprocessor">#include &lt;sys/types.h&gt;</span>
+<span class="preprocessor">#include &lt;netinet/in.h&gt;</span>
+<span class="preprocessor">#include &lt;sys/socket.h&gt;</span>
+<span class="preprocessor">#include &lt;netinet/in.h&gt;</span>
+<span class="preprocessor">#include &lt;arpa/inet.h&gt;</span>
+<span class="preprocessor">#include &lt;unistd.h&gt;</span>
+<span class="preprocessor">#include "rpc.h"</span>
+
+<span class="keyword">int</span> main(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])
+{
+  <span class="keyword">int</span> rpc_fd;
+  <span class="keyword">struct</span> sockaddr_in rpc_addr;
+
+  <span class="keyword">struct</span> RemoteProcessCall rpc;
+  ssize_t nbytes;
+  ssize_t recvd_nbytes;
+  
+  memset(&rpc_addr, <span class="number">0</span>, <span class="keyword">sizeof</span>(rpc_addr));
+  rpc_addr<span class="variable">.sin_family</span> = AF_INET;
+  rpc_addr<span class="variable">.sin_addr</span><span class="variable">.s_addr</span> = inet_addr(RPCHOST);
+  rpc_addr<span class="variable">.sin_port</span> = htons(RPCPORT);
+
+  <span class="keyword">if</span>((rpc_fd = socket(AF_INET, SOCK_STREAM, <span class="number">0</span>)) &lt; <span class="number">0</span>) {
+    perror(<span class="string">"create socket error!"</span>);
+    <span class="keyword">return</span> <span class="number">1</span>;
+  }
+
+  <span class="keyword">if</span>(connect(rpc_fd, (<span class="keyword">struct</span> sockaddr*)&rpc_addr, <span class="keyword">sizeof</span>(<span class="keyword">struct</span> sockaddr)) &lt; <span class="number">0</span>)   {
+    perror(<span class="string">"connect error!"</span>);
+    <span class="keyword">return</span> <span class="number">2</span>;
+  }
+
+  <span class="comment">// send rpc call</span>
+  memcpy(rpc<span class="variable">.cmd</span>, argv[<span class="number">1</span>], strlen(argv[<span class="number">1</span>])+<span class="number">1</span>);
+  <span class="keyword">if</span>((nbytes = send(rpc_fd, &rpc, <span class="keyword">sizeof</span>(rpc), <span class="number">0</span>)) &lt; <span class="keyword">sizeof</span>(rpc)) {
+    perror(<span class="string">"send error!"</span>);
+    <span class="keyword">return</span> <span class="number">3</span>;
+  }
+  
+  <span class="comment">// recieve rpc call</span>
+  recvd_nbytes = <span class="number">0</span>;
+  <span class="keyword">while</span>((nbytes=recv(rpc_fd, (<span class="keyword">char</span>*)&rpc+recvd_nbytes, <span class="keyword">sizeof</span>(rpc), <span class="number">0</span>)) &gt; <span class="number">0</span>) {
+    recvd_nbytes += nbytes;
+    <span class="keyword">if</span> (recvd_nbytes == <span class="keyword">sizeof</span>(rpc)) <span class="keyword">break</span>;
+  }
+  <span class="keyword">if</span> (recvd_nbytes != <span class="keyword">sizeof</span>(rpc)) {
+    perror(<span class="string">"recv call bad!"</span>);
+    close(rpc_fd);
+    <span class="keyword">return</span> <span class="number">4</span>;
+  }
+
+  <span class="comment">// output result</span>
+  printf(<span class="string">"%s\n"</span>, rpc<span class="variable">.stdout</span>);
+
+  close(rpc_fd);
+  <span class="keyword">return</span> <span class="number">0</span>;
+}
+</pre></td></tr></table></figure>
+
+<p>基本就是单一进程socket访问的流程，创建socket，connect连接服务端，
+send发送构造好的数据包，
+recv阻塞等待调用完成，然后输出到终端。</p>
+<p>服务端复杂一些，首先创建服务端Socket侦听程序，
+一旦有请求过来，fork一个子进程进入run_rpc处理RPC请求。
+子进程使用popen系统调用执行命令，这样可以获取程序的输出，但是不能获取返回值。
+其它执行命令的方案可以是system()，可以获取程序的返回值但不能获取输出。
+或者是再fork()子进程并exec()去执行命令，这样可以进行更详细的控制。
+popen执行命令之后，获取输出填入rpc call并发回。</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+</pre></td><td class="code"><pre><span class="preprocessor">#include &lt;stdio.h&gt;</span>
+<span class="preprocessor">#include &lt;stdlib.h&gt;</span>
+<span class="preprocessor">#include &lt;string.h&gt;</span>
+<span class="preprocessor">#include &lt;sys/types.h&gt;</span>
+<span class="preprocessor">#include &lt;netinet/in.h&gt;</span>
+<span class="preprocessor">#include &lt;sys/socket.h&gt;</span>
+<span class="preprocessor">#include &lt;netinet/in.h&gt;</span>
+<span class="preprocessor">#include &lt;arpa/inet.h&gt;</span>
+<span class="preprocessor">#include &lt;unistd.h&gt;</span>
+<span class="preprocessor">#include &lt;sys/wait.h&gt;</span>
+<span class="preprocessor">#include "rpc.h"</span>
+
+void run_rpc(int fd) {
+  struct RemoteProcessCall <span class="keyword">call</span><span class="comment">;</span>
+  FILE* clfd<span class="comment">;</span>
+  ssize_t nbytes<span class="comment">;</span>
+  int recvd_nbytes<span class="comment">;</span>
+
+  recvd_nbytes = <span class="number">0</span><span class="comment">;</span>
+  while((nbytes=recv(fd, (char*)&<span class="keyword">call</span>+recvd_nbytes, sizeof(<span class="keyword">call</span>), <span class="number">0</span>)) &gt; <span class="number">0</span>) {
+    recvd_nbytes += nbytes<span class="comment">;</span>
+    if (recvd_nbytes == sizeof(<span class="keyword">call</span>)) <span class="keyword">break</span><span class="comment">;</span>
+  }
+  if (recvd_nbytes != sizeof(<span class="keyword">call</span>)) {
+    perror(<span class="string">"recv call bad!"</span>)<span class="comment">;</span>
+    close(fd)<span class="comment">;</span>
+    exit(-<span class="number">1</span>)<span class="comment">;    </span>
+  }
+  printf(<span class="string">"recv command: %s\n"</span>, <span class="keyword">call</span><span class="preprocessor">.cmd</span>)<span class="comment">;</span>
+
+  clfd = popen(<span class="keyword">call</span><span class="preprocessor">.cmd</span>, <span class="string">"r"</span>)<span class="comment">;</span>
+  if((nbytes=fread(<span class="keyword">call</span><span class="preprocessor">.stdout</span>, <span class="number">1</span>, sizeof(<span class="keyword">call</span><span class="preprocessor">.stdout</span>), clfd)) &lt; <span class="number">0</span>) {
+    perror(<span class="string">"get stdout error!"</span>)<span class="comment">;</span>
+    exit(-<span class="number">1</span>)<span class="comment">;</span>
+  }
+  pclose(clfd)<span class="comment">;</span>
+  printf(<span class="string">"run command over,  stdout size: %d\n"</span>, nbytes)<span class="comment">; // TODO nbytes</span>
+
+  if((nbytes=send(fd, &<span class="keyword">call</span>, sizeof(<span class="keyword">call</span>), <span class="number">0</span>)) != sizeof(<span class="keyword">call</span>)) {
+    perror(<span class="string">"send call bad!"</span>)<span class="comment">;</span>
+    close(fd)<span class="comment">;</span>
+    exit(-<span class="number">1</span>)<span class="comment">;</span>
+  }
+  printf(<span class="string">"send result: %s\n"</span>, <span class="keyword">call</span><span class="preprocessor">.cmd</span>)<span class="comment">;</span>
+
+  close(fd)<span class="comment">;</span>
+  exit(<span class="number">0</span>)<span class="comment">;</span>
+}
+
+void sig_child(int signo)
+{
+    int status<span class="comment">;</span>
+    wait(&status)<span class="comment">;</span>
+    //printf(<span class="string">"process exit status %d\n"</span>, WEXITSTATUS(status))<span class="comment">;</span>
+}
+
+int main(int argc, char *argv[])
+{
+  int server_fd, client_fd<span class="comment">;</span>
+  struct sockaddr_in server_addr<span class="comment">;</span>
+  int pid<span class="comment">;</span>
+
+  if((server_fd = socket(AF_INET, SOCK_STREAM, <span class="number">0</span>)) &lt; <span class="number">0</span>) {
+    perror(<span class="string">"create socket error!"</span>)<span class="comment">;</span>
+    return <span class="number">1</span><span class="comment">;</span>
+  }
+  
+  server_addr<span class="preprocessor">.sin</span>_family = AF_INET<span class="comment">;</span>
+  server_addr<span class="preprocessor">.sin</span>_port=htons(RPCPORT)<span class="comment">;</span>
+  server_addr<span class="preprocessor">.sin</span>_addr<span class="preprocessor">.s</span>_addr = INADDR_ANY<span class="comment">;</span>
+  bzero(&(server_addr<span class="preprocessor">.sin</span>_zero), <span class="number">8</span>)<span class="comment">;</span>
+
+  if(bind(server_fd, (struct sockaddr*)&server_addr, sizeof(struct sockaddr)) &lt; <span class="number">0</span>) {
+    perror(<span class="string">"bind error!"</span>)<span class="comment">;</span>
+    return <span class="number">2</span><span class="comment">;</span>
+  }
+
+  if(listen(server_fd, <span class="number">10</span>) &lt; <span class="number">0</span>) {
+    perror(<span class="string">"listen error!"</span>)<span class="comment">;</span>
+    return <span class="number">3</span><span class="comment">;</span>
+  }
+  
+  signal(SIGCHLD, sig_child)<span class="comment">;</span>
+  for(<span class="comment">;;) {</span>
+    if((client_fd = accept(server_fd, NULL, NULL)) &lt; <span class="number">0</span>) {
+      perror(<span class="string">"accept error!"</span>)<span class="comment">;</span>
+      continue<span class="comment">;</span>
+    }
+    
+    if((pid = fork()) &lt; <span class="number">0</span>) {
+      perror(<span class="string">"fork error!"</span>)<span class="comment">;</span>
+      close(client_fd)<span class="comment">;</span>
+      close(server_fd)<span class="comment">;</span>
+      return <span class="number">4</span><span class="comment">;</span>
+    }
+    if(pid == <span class="number">0</span>) {    // child
+      close(server_fd)<span class="comment">;</span>
+      run_rpc(client_fd)<span class="comment">;</span>
+    }
+    // father
+    close(client_fd)<span class="comment">;</span>
+  }
+  return <span class="number">0</span><span class="comment">;</span>
+}
+</pre></td></tr></table></figure>
+
+<p>执行的效果如下，服务端：</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre><span class="char">$.</span>/server                        
+recv <span class="method">command:</span> ps
+run command over,  stdout <span class="method">size:</span> <span class="number">145</span>
+send <span class="method">result:</span> ps
+recv <span class="method">command:</span> ps aux
+run command over,  stdout <span class="method">size:</span> <span class="number">6175</span>
+send <span class="method">result:</span> ps aux
+</pre></td></tr></table></figure>
+
+<p>客户端：</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre></td><td class="code"><pre>$./client <span class="string">"ps"</span>
+  PID TTY          TIME CMD
+  <span class="number">269</span> pts/<span class="number">1</span>    <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> zsh
+  <span class="number">480</span> pts/<span class="number">1</span>    <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> server
+  <span class="number">492</span> pts/<span class="number">1</span>    <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> server
+  <span class="number">493</span> pts/<span class="number">1</span>    <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> ps
+
+$./client <span class="string">"ps aux"</span>
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         <span class="number">1</span>  <span class="number">0.1</span>  <span class="number">1.0</span>   <span class="number">4964</span>  <span class="number">2652</span> ?        Ss   <span class="number">08</span>:<span class="number">59</span>   <span class="number">0</span>:<span class="number">01</span> /sbin/init
+root         <span class="number">2</span>  <span class="number">0.0</span>  <span class="number">0.0</span>      <span class="number">0</span>     <span class="number">0</span> ?        S    <span class="number">08</span>:<span class="number">59</span>   <span class="number">0</span>:<span class="number">00</span> [kthreadd]
+root         <span class="number">3</span>  <span class="number">0.0</span>  <span class="number">0.0</span>      <span class="number">0</span>     <span class="number">0</span> ?        S    <span class="number">08</span>:<span class="number">59</span>   <span class="number">0</span>:<span class="number">00</span> [ksoftirqd/<span class="number">0</span>]
+root         <span class="number">4</span>  <span class="number">0.0</span>  <span class="number">0.0</span>      <span class="number">0</span>     <span class="number">0</span> ?        S    <span class="number">08</span>:<span class="number">59</span>   <span class="number">0</span>:<span class="number">00</span> [kworker/<span class="number">0</span>:<span class="number">0</span>]
+root         <span class="number">5</span>  <span class="number">0.0</span>  <span class="number">0.0</span>      <span class="number">0</span>     <span class="number">0</span> ?        S&lt;   <span class="number">08</span>:<span class="number">59</span>   <span class="number">0</span>:<span class="number">00</span> [kworker/<span class="number">0</span>:0H]
+root         <span class="number">6</span>  <span class="number">0.0</span>  <span class="number">0.0</span>      <span class="number">0</span>     <span class="number">0</span> ?        S    <span class="number">08</span>:<span class="number">59</span>   <span class="number">0</span>:<span class="number">00</span> [kworker/u:<span class="number">0</span>]
+root         <span class="number">7</span>  <span class="number">0.0</span>  <span class="number">0.0</span>      <span class="number">0</span>     <span class="number">0</span> ?        S&lt;   <span class="number">08</span>:<span class="number">59</span>   <span class="number">0</span>:<span class="number">00</span> [kworker/u:0H]
+<span class="keyword">...</span>
+</pre></td></tr></table></figure>
+
+<p>更多可扩展的问题：</p>
+<ul>
+<li>服务端转为Daemon进程</li>
+<li>网络字节序的调整</li>
+<li>stderr的获取</li>
+<li>网络传输字节的加密</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

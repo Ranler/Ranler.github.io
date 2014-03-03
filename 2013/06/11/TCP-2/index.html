@@ -1,0 +1,213 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>TCP 2 | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="There are two kinds of data included in TCP segments:
+
+interactive data: such as Telnet, SSH;
+bulk data: such as FTP, email;
+
+Interactive Data Flow
+Ea">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="TCP 2"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-06-10T16:00:00.000Z"><a href="/2013/06/11/TCP-2/">Jun 11 2013</a></time>
+      
+      
+  
+    <h1 class="title">TCP 2</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>There are two kinds of data included in TCP segments:</p>
+<ul>
+<li><strong>interactive</strong> data: such as Telnet, SSH;</li>
+<li><strong>bulk</strong> data: such as FTP, email;</li>
+</ul>
+<h3>Interactive Data Flow</h3>
+<p>Each interactive keystroke normally generates a data package.
+So entering a key in Telnet/SSH will generate 4 segments:</p>
+<ol>
+<li>the interactive keystroke from the client</li>
+<li>an acknowledgment of the keystroke from the server</li>
+<li>the echo of the keystroke from the server</li>
+<li>an acknowledgment of the echo from the client</li>
+</ol>
+<h5>delayed acknowledgments</h5>
+<p>Normally segment 2 and 3 are combined using <strong>delayed acknowledgments</strong>.
+In this way TCP does not send an ACK the instant it recieves data.
+Instand, it delays the ACK, hoping to have data going in the same direction as the ACK, so the ACK can be set along with data.
+Most implement use a 200ms delay. The max delay time is 500ms in RFC.</p>
+<h5>Nagle Algorithm</h5>
+<p>Nagle algorithm says that when a TCP connection has outstanding data that has not yet been acknowledged, small segments cannot be sent until the outstanding data is acknowledged.
+Instead, small amount of data are collected by TCP and sent in a single segment when the acknowledgment arrives.
+So on a slow WAN, where it is desired to reduce the number of tinygrams, fewer segments are sent.</p>
+<p>In some real-time application environment, Nagle algorithm needs to be turned off.
+It can lead to noticeable delays to the interactive user.
+The socket API uses the <code>TCP_NODELAY</code> socket option to disable the Nagle algorithm.</p>
+<h3>Bulk Data Flow</h3>
+<p>With TCP&#39;s <strong>sliding-window</strong> protocol the reciever does not have to acknowledge every received packet.</p>
+<p>The size of window offered by the receiver can usually be controlled by the receiving process.</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="comment">|</span> &lt;<span class="literal">-</span> <span class="comment">MSS</span> <span class="literal">-</span>&gt; <span class="comment">|</span>
+<span class="comment">|</span>   <span class="comment">1024B</span>   <span class="comment">|</span>   <span class="comment">1024B</span>   <span class="comment">|</span>   <span class="comment">1024B</span>   <span class="comment">|</span>   <span class="comment">1024B</span>   <span class="comment">|</span>  <span class="comment">1024B</span>  <span class="comment">|</span>  <span class="string">.</span><span class="string">.</span><span class="string">.</span>
+<span class="comment">|</span>   &lt;<span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>    <span class="comment">now</span>  <span class="comment">window</span> <span class="comment">size</span>  <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>&gt;    <span class="comment">|
+</pre></td></tr></table></figure>
+
+<p>The socket API allows a process to set the sizes of the send buffer and receive buffer(<code>SO_RCVBUF</code>, <code>SO_SNDBUF</code>).
+The size of the receive buffer is the max size of the advertised window for that connection.</p>
+<h5>Slow Start</h5>
+<p><strong>Slow Start</strong> algorithm operates by observing that the rate at which new packets should be injucted into the network is the rate at which the acknowledgments are returned by the other end.</p>
+<p>Flow control for two ends:</p>
+<ul>
+<li>sender: congestion window(拥塞窗口), from 1 segment step 1 when ACK is received</li>
+<li>receiver: advertised window(通知窗口)/receiver window(接收窗口)</li>
+</ul>
+<p>The sender can transmit up to the minimum of the congestion window and the advertised window.</p>
+<h3>Reference</h3>
+<ul>
+<li>TCP/IP v1</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Network/">Network</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

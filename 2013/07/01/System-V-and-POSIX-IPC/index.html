@@ -1,0 +1,348 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>System V IPC and POSIX IPC | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="Both System V IPC (XSI IPC) and POSIX IPC including three different mechanisms for inter-processes communication:
+
+Message queues (消息队列): pass message">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="System V IPC and POSIX IPC"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-06-30T16:00:00.000Z"><a href="/2013/07/01/System-V-and-POSIX-IPC/">Jul 1 2013</a></time>
+      
+      
+  
+    <h1 class="title">System V IPC and POSIX IPC</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>Both <strong>System V IPC (XSI IPC)</strong> and <strong>POSIX IPC</strong> including three different mechanisms for inter-processes communication:</p>
+<ul>
+<li>Message queues (消息队列): pass messages between processes</li>
+<li>Semaphores (信号量): synchronize for multiple processes by kernel</li>
+<li>Shared memory (共享存储): share region of memory</li>
+</ul>
+<p>Summary of programming interfaces for System V IPC:</p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Message queues</th>
+<th>Semaphores</th>
+<th>Shared memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Header file</td>
+<td><sys/msg.h></td>
+<td><sys/sem.h></td>
+<td><sys/shm.h></td>
+</tr>
+<tr>
+<td>Associated data structure</td>
+<td>msqid_ds</td>
+<td>semid_ds</td>
+<td>shmid_ds</td>
+</tr>
+<tr>
+<td>Create/open object</td>
+<td>msgget()</td>
+<td>semget()</td>
+<td>shmget()+shmat()</td>
+</tr>
+<tr>
+<td>Close object</td>
+<td>(none)</td>
+<td>(none)</td>
+<td>shmdt()</td>
+</tr>
+<tr>
+<td>Control operations</td>
+<td>msgctl()</td>
+<td>semctl()</td>
+<td>shmctl()</td>
+</tr>
+<tr>
+<td>Performing IPC</td>
+<td>msgsnd()—write message, msgrcv()—read message</td>
+<td>semop()—test/adjust semaphore</td>
+<td>access memory in shared region</td>
+</tr>
+</tbody>
+</table>
+<p>A single system call (<code>ipc</code>(2) ) acts as the entry point to the kernel for all System V IPC operations.</p>
+<p>Use command <code>ipcs -l</code> to show the built-in limit of System V IPC.</p>
+<p>Summary of programming interfaces for POSIX IPC:</p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Message queues</th>
+<th>Semaphores</th>
+<th>Shared memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Header file</td>
+<td><mqueue.h></td>
+<td><semaphore.h></td>
+<td><sys/mman.h></td>
+</tr>
+<tr>
+<td>Object handle</td>
+<td>mqd_t</td>
+<td>sem_t *</td>
+<td>int  (file descriptor)</td>
+</tr>
+<tr>
+<td>Create/open</td>
+<td>mq_open()</td>
+<td>sem_open()</td>
+<td>shm_open() + mmap()</td>
+</tr>
+<tr>
+<td>Close</td>
+<td>mq_close()</td>
+<td>sem_close()</td>
+<td>munmap()</td>
+</tr>
+<tr>
+<td>Unlink</td>
+<td>mq_unlink()</td>
+<td>sem_unlink()</td>
+<td>shm_unlink()</td>
+</tr>
+<tr>
+<td>Perform IPC</td>
+<td>mq_send(), mq_receive()</td>
+<td>sem_post(),  sem_wait(), sem_getvalue()</td>
+<td>operate on locations in shared region</td>
+</tr>
+<tr>
+<td>Miscellaneous operations</td>
+<td>mq_setattr() —set attributes, mq_getattr() —get attributes, mq_notify()—request notification</td>
+<td>sem_init()—initialize unnamed semaphore, sem_destroy()—destroy unnamed semaphore</td>
+<td>(none)</td>
+</tr>
+</tbody>
+</table>
+<h3>Message queues</h3>
+<h5>System V</h5>
+<p>For System V Message queues, It is recommended that Using PIPE/FIFO or UNIX domain sockets instead of Sysmtem V Message queues.</p>
+<h5>POSIX</h5>
+<p>POSIX message queues also have the following specific advantages over System V message queues:</p>
+<ul>
+<li>The message notification feature allows a (single) process to be asynchronously notified via a signal or the instantiation of a thread when a message arrives on a previously empty queue.</li>
+<li>On Linux (but not other UNIX implementations), POSIX message queues can be monitored using  poll(),  select() , and  epoll . System V message queues don’t pro-vide this feature.</li>
+</ul>
+<h3>Semaphores</h3>
+<h5>System V</h5>
+<p>Both Semaphores and File Lock are used for share resources between processes.
+File Lock is simple than Semaphores, and Semaphores is a bit quicker than File Lock.</p>
+<h5>POSIX</h5>
+<p>POSIX semaphores have the following further advantages over System V semaphores:
+- The POSIX semaphore interface is much simpler than the System V sema-phore interface. This simplicity is ac hieved without loss of functional power.
+- POSIX named semaphores eliminate the initialization problem associated with
+System V semaphores</p>
+<h3>Shared memory</h3>
+<p>There are a number of different techniques for sharing memory regions between unrelated processes:</p>
+<ul>
+<li>System V shared memory</li>
+<li>shared file mappings</li>
+<li>POSIX shared memory objects</li>
+</ul>
+<p>A number of points apply to all of these techniques:</p>
+<ul>
+<li>They provide fast IPC, and applications typically must use a semaphore (or other synchronization primitive) to synchronize access to the shared region.</li>
+<li>Once the shared memory region has be en mapped into the process’s virtual address space, it looks just like any other part of the process’s memory space.</li>
+<li>The system places the shared memory regions within the process virtual address space in a similar manner. We outlined th is placement while describing System V shared memory. The Linux-specific /proc/ PID /maps file lists infor-mation about all types of shared memory regions.</li>
+<li>Assuming that we don’t attempt to map a shared memory region at a fixed address, we should ensure that all refere nces to locations in the region are cal-culated as offsets (rather than pointers),  since the region may be located at dif-ferent virtual addresses within  different processes.</li>
+</ul>
+<p>There are also a few notable differences between the techniques for shared memory:</p>
+<p>The fact that the contents of a shared  file mapping are synchronized with the
+- underlying mapped file means that the data stored in a shared memory region can persist across system restarts.
+- System V and POSIX shared memory use different mechanisms to identify and refer to a shared memory object. System V uses its own scheme of keys and identifiers, which doesn’t fit with th e standard UNIX I/O model and requires separate system calls (e.g., shmctl()) and commands ( ipcs  and  ipcrm). By con-trast, POSIX shared memory employs names and file descriptors, and conse-quently shared memory objects can be examined and manipulated using a variety of existing UNIX system calls (e.g.,  fstat()  and fchmod() ).
+- The size of a System V shared memory segment is fixed at the time of creation (via  shmget() ). By contrast, for a mapping backed by a file or by a POSIX shared memory object, we can use  ftruncate() to adjust the size of the underlying object, and then re-create the mapping using  munmap() and  mmap() (or the Linux-specific mremap() )
+- Historically, System V shared memory  was more widely available than mmap() and POSIX shared memory, although most UNIX implementations now pro-vide all of these techniques.</p>
+<h3>System V IPC vs POSIX IPC</h3>
+<h5>TLPI</h5>
+<p>POSIX IPC has the following general advantages when compared to System V IPC:</p>
+<ul>
+<li>The POSIX IPC interface is simpler than the System V IPC interface.</li>
+<li>The POSIX IPC model—the use of names instead of keys, and the open, close , and  unlink functions—is more consistent with the traditional UNIX file model.</li>
+<li>POSIX IPC objects are reference counted. This simplifies object deletion,
+because we can unlink a POSIX IPC object, knowing that it will be destroyed
+only when all processes have closed it.</li>
+</ul>
+<p>However, there is one notable advantage in favor of System V IPC: <strong>portability</strong>.</p>
+<h5>Stackoverflow</h5>
+<p>Question from Stackoverflow: <a href="http://stackoverflow.com/questions/4582968/system-v-ipc-vs-posix-ipc" target="_blank">System V IPC vs POSIX IPC</a></p>
+<pre><code><span class="number">1.</span> What are <span class="keyword">the</span> differences <span class="keyword">between</span> System V IPC <span class="keyword">and</span> POSIX IPC ?
+<span class="number">2.</span> Why do we have two standards ?
+<span class="number">3.</span> How <span class="keyword">to</span> decide which IPC functions <span class="keyword">to</span> use ?</code></pre>
+<p>Answer 1:</p>
+<pre><code>Both have the same basic tools -- semaphores, shared memory and message queues. They offer a slightly different <span class="class"><span class="keyword">interface</span> <span class="title">to</span> <span class="title">those</span> <span class="title">tools</span>, <span class="title">but</span> <span class="title">the</span> <span class="title">basic</span> <span class="title">concepts</span> <span class="title">are</span> <span class="title">the</span> <span class="title">same</span>. <span class="title">One</span> <span class="title">notable</span> <span class="title">difference</span> <span class="title">is</span> <span class="title">that</span> <span class="title">POSIX</span> <span class="title">offers</span> <span class="title">some</span> <span class="title">notification</span> <span class="title">features</span> <span class="title">for</span> <span class="title">message</span> <span class="title">queues</span> <span class="title">that</span> <span class="title">Sys</span> <span class="title">V</span> <span class="title">does</span> <span class="title">not</span>. (<span class="title">See</span> <span class="title">mq_notify</span>().)
+
+<span class="title">Sys</span> <span class="title">V</span> <span class="title">IPC</span> <span class="title">has</span> <span class="title">been</span> <span class="title">around</span> <span class="title">for</span> <span class="title">longer</span> <span class="title">which</span> <span class="title">has</span> <span class="title">a</span> <span class="title">couple</span> <span class="title">of</span> <span class="title">practical</span> <span class="title">implications</span> --
+
+<span class="title">First</span>, <span class="title">POSIX</span> <span class="title">IPC</span> <span class="title">is</span> <span class="title">less</span> <span class="title">widely</span> <span class="title">implemented</span>. <span class="title">I</span> <span class="title">wrote</span> <span class="title">a</span> <span class="title">Python</span> <span class="title">wrapper</span> <span class="title">for</span> <span class="title">POSIX</span> <span class="title">IPC</span> <span class="title">and</span> <span class="title">its</span> <span class="title">documentation</span> <span class="title">lists</span> <span class="title">what</span> <span class="title">I</span> <span class="title">know</span> <span class="title">about</span> <span class="title">POSIX</span> <span class="title">IPC</span> <span class="title">implementations</span> <span class="title">on</span> <span class="title">various</span> <span class="title">platforms</span>.
+
+<span class="title">On</span> <span class="title">all</span> <span class="title">of</span> <span class="title">the</span> <span class="title">platforms</span> <span class="title">listed</span> <span class="title">in</span> <span class="title">that</span> <span class="title">documentation</span>, <span class="title">Sys</span> <span class="title">V</span> <span class="title">IPC</span> <span class="title">is</span> <span class="title">completely</span> <span class="title">implemented</span> <span class="title">AFAIK</span>, <span class="title">whereas</span> <span class="title">you</span> <span class="title">can</span> <span class="title">see</span> <span class="title">the</span> <span class="title">POSIX</span> <span class="title">IPC</span> <span class="title">is</span> <span class="title">not</span>.
+
+<span class="title">The</span> <span class="title">second</span> <span class="title">implication</span> <span class="title">of</span> <span class="title">their</span> <span class="title">relative</span> <span class="title">age</span> <span class="title">is</span> <span class="title">that</span> <span class="title">POSIX</span> <span class="title">IPC</span> <span class="title">was</span> <span class="title">designed</span> <span class="title">after</span> <span class="title">Sys</span> <span class="title">V</span> <span class="title">IPC</span> <span class="title">had</span> <span class="title">been</span> <span class="title">used</span> <span class="title">for</span> <span class="title">a</span> <span class="title">while</span>. <span class="title">Therefore</span>, <span class="title">the</span> <span class="title">designers</span> <span class="title">of</span> <span class="title">the</span> <span class="title">POSIX</span> <span class="title">API</span> <span class="title">were</span> <span class="title">able</span> <span class="title">to</span> <span class="title">learn</span> <span class="title">from</span> <span class="title">the</span> <span class="title">strengths</span> <span class="title">and</span> <span class="title">weaknesses</span> <span class="title">of</span> <span class="title">the</span> <span class="title">Sys</span> <span class="title">V</span> <span class="title">API</span>. <span class="title">As</span> <span class="title">a</span> <span class="title">result</span> <span class="title">the</span> <span class="title">POSIX</span> <span class="title">API</span> <span class="title">is</span> <span class="title">simpler</span> <span class="title">and</span> <span class="title">easier</span> <span class="title">to</span> <span class="title">use</span> <span class="title">IMO</span>, <span class="title">and</span> <span class="title">I</span> <span class="title">recommend</span> <span class="title">it</span> <span class="title">over</span> <span class="title">the</span> <span class="title">Sys</span> <span class="title">V</span> <span class="title">API</span>.
+
+<span class="title">I</span> <span class="title">should</span> <span class="title">note</span> <span class="title">that</span> <span class="title">I</span>'<span class="title">ve</span> <span class="title">never</span> <span class="title">run</span> <span class="title">any</span> <span class="title">performance</span> <span class="title">tests</span> <span class="title">to</span> <span class="title">compare</span> <span class="title">the</span> <span class="title">two</span>. <span class="title">I</span> <span class="title">would</span> <span class="title">think</span> <span class="title">that</span> <span class="title">the</span> <span class="title">older</span> <span class="title">API</span> (<span class="title">Sys</span> <span class="title">V</span>) <span class="title">would</span> <span class="title">have</span> <span class="title">had</span> <span class="title">more</span> <span class="title">time</span> <span class="title">to</span> <span class="title">be</span> <span class="title">performance</span> <span class="title">tuned</span>, <span class="title">but</span> <span class="title">that</span>'<span class="title">s</span> <span class="title">just</span> <span class="title">speculation</span> <span class="title">which</span> <span class="title">is</span> <span class="title">of</span> <span class="title">course</span> <span class="title">no</span> <span class="title">substitute</span> <span class="title">for</span> <span class="title">real</span>-<span class="title">world</span> <span class="title">testing</span>.
+
+<span class="title">As</span> <span class="title">to</span> <span class="title">why</span> <span class="title">there</span> <span class="title">are</span> <span class="title">two</span> <span class="title">standards</span> -- <span class="title">POSIX</span> <span class="title">created</span> <span class="title">their</span> <span class="title">standard</span> <span class="title">because</span> <span class="title">they</span> <span class="title">thought</span> <span class="title">it</span> <span class="title">was</span> <span class="title">an</span> <span class="title">improvement</span> <span class="title">on</span> <span class="title">the</span> <span class="title">Sys</span> <span class="title">V</span> <span class="title">standard</span>. <span class="title">But</span> <span class="title">if</span> <span class="title">everyone</span> <span class="title">agreed</span> <span class="title">that</span> <span class="title">POSIX</span> <span class="title">IPC</span> <span class="title">is</span> <span class="title">better</span>, <span class="title">many</span> <span class="title">many</span> <span class="title">many</span> <span class="title">programs</span> <span class="title">still</span> <span class="title">use</span> <span class="title">Sys</span> <span class="title">V</span> <span class="title">IPC</span> <span class="title">and</span> <span class="title">it</span> <span class="title">would</span> <span class="title">take</span> <span class="title">years</span> <span class="title">to</span> <span class="title">port</span> <span class="title">them</span> <span class="title">all</span> <span class="title">to</span> <span class="title">POSIX</span> <span class="title">IPC</span>. <span class="title">In</span> <span class="title">practice</span>, <span class="title">it</span> <span class="title">would</span> <span class="title">not</span> <span class="title">be</span> <span class="title">worth</span> <span class="title">the</span> <span class="title">effort</span> <span class="title">so</span> <span class="title">even</span> <span class="title">if</span> <span class="title">all</span> <span class="title">new</span> <span class="title">code</span> <span class="title">used</span> <span class="title">POSIX</span> <span class="title">IPC</span> <span class="title">as</span> <span class="title">of</span> <span class="title">tomorrow</span>, <span class="title">Sys</span> <span class="title">V</span> <span class="title">IPC</span> <span class="title">would</span> <span class="title">stick</span> <span class="title">around</span> <span class="title">for</span> <span class="title">many</span> <span class="title">years</span>.
+
+<span class="title">We</span> <span class="title">can</span>'<span class="title">t</span> <span class="title">tell</span> <span class="title">you</span> <span class="title">which</span> <span class="title">you</span> <span class="title">should</span> <span class="title">use</span> <span class="title">without</span> <span class="title">knowing</span> <span class="title">a</span> <span class="title">lot</span> <span class="title">more</span> <span class="title">about</span> <span class="title">what</span> <span class="title">you</span> <span class="title">intend</span> <span class="title">to</span> <span class="title">do</span>, <span class="title">but</span> <span class="title">the</span> <span class="title">answers</span> <span class="title">you</span> <span class="title">have</span> <span class="title">here</span> <span class="title">should</span> <span class="title">give</span> <span class="title">you</span> <span class="title">enough</span> <span class="title">information</span> <span class="title">to</span> <span class="title">decide</span> <span class="title">on</span> <span class="title">your</span> <span class="title">own</span>.</code></pre>
+<p>Answer 2:</p>
+<pre><code><span class="number">1.</span> I believe <span class="keyword">the</span> major difference <span class="keyword">is</span> <span class="keyword">that</span> all POSIX IPC <span class="keyword">is</span> thread-safe, <span class="keyword">while</span> most SysV IPC <span class="keyword">is</span> NOT.
+<span class="number">2.</span> Because <span class="keyword">of</span> Unix wars. The Single UNIX specification (SUS), aka POSIX, was created <span class="keyword">to</span> standardise interfaces <span class="function_start"><span class="keyword">on</span> <span class="title">Unix</span></span>-based systems.
+<span class="number">3.</span> You probably want POSIX. Depends exclusively <span class="function_start"><span class="keyword">on</span> <span class="title">your</span></span> requirements.</code></pre>
+<h3>Reference</h3>
+<ul>
+<li>TLPI</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Learn Shell | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="set PARAMS  “set command PARAMS in scripts”:
+
+-x          “turn on execuation tracking”
++x          “turn off execuation tracking”
+— 1 2 3    “set new">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Learn Shell"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-03-19T16:00:00.000Z"><a href="/2013/03/20/SHELL1/">Mar 20 2013</a></time>
+      
+      
+  
+    <h1 class="title">Learn Shell</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>set PARAMS  “set command PARAMS in scripts”:</p>
+<ul>
+<li>-x          “turn on execuation tracking”</li>
+<li>+x          “turn off execuation tracking”</li>
+<li>— 1 2 3    “set new shell arguments as ‘1 2 3’”</li>
+<li>-e          “exit if command‘s return code isn’t 0”</li>
+</ul>
+<h3>variables</h3>
+<ul>
+<li>$((x))    “evaluate arithmetic expressions”</li>
+</ul>
+<ul>
+<li>$(cmd)    “exe this cmd and get the output, better”</li>
+<li><code>cmd</code>     “same as $(cmd)”</li>
+</ul>
+<ul>
+<li>${v:-w}   “return w if v isn‘t exist or is null. if ’:‘ ignored, just if v isn’t exit”</li>
+<li>${v:=w}   “set v=w and return if v isn&#39;t exist or is null”</li>
+<li>${v:?m}   “print ‘v:m’ and abort if v isn&#39;t exist or is null”</li>
+<li><p>${v:+w}   “return null if v isn&#39;t exist or is null, else return w. test for the existence of variable”</p>
+</li>
+<li><p>${v#p}</p>
+</li>
+<li>${v##p}</li>
+<li>${v%p}</li>
+<li><p>${v%%p}</p>
+</li>
+<li><p>$0         “command name”</p>
+</li>
+<li>$1 ${1}    “Nth arguments”</li>
+<li>$#         “number of command arguments (not include command)”</li>
+<li>shift       “shift first argument away”</li>
+<li>$*,$@       “all arguments”</li>
+<li>&quot;$*“       ”all arguments as a string, equal to ‘$1 $2 …’ &quot;</li>
+<li><p>“$@”       “all arguments as individual strings, equal to ‘$1’ ‘$2’…best for another programsl”</p>
+</li>
+<li><p>$?       “exit status of previous command”</p>
+</li>
+<li>$$       “process ID of shell”</li>
+<li>$!       “last process ID, wait”</li>
+<li>$-     “represent the currently enabled shell options”
+more in 6.1 table 6-3</li>
+</ul>
+<ul>
+<li>readonly  “make the variable unmodifiable”                         readonly x=3</li>
+</ul>
+<ul>
+<li>printf    “print to standard output”                               printf “X is: ‘%s’” $x</li>
+<li>read      “read variables from standard input, separate by $IFS”   read x y z</li>
+</ul>
+<ul>
+<li>PATH=… COMMAND         “add or modifity variables only for this COMMAND run”</li>
+<li>env -i PATH=… COMMAND  “not inherited variables only for this COMMAND run”</li>
+<li>unset PATH               “remove variables or functions for runing shell” </li>
+</ul>
+<h3>if-elif-else-fi</h3>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class="code"><pre><span class="keyword">if</span> pipeline <span class="keyword">...</span>
+then
+    <span class="keyword">...</span>
+elif pipeline <span class="keyword">...</span>
+then
+    <span class="keyword">...</span>
+<span class="keyword">else</span>
+    <span class="keyword">...</span>
+fi
+</pre></td></tr></table></figure>
+
+<ul>
+<li>!: NOT</li>
+<li>&amp;&amp;: AND</li>
+<li>||: NOR</li>
+<li>‘:’: do nothing</li>
+</ul>
+<p>next codes is same as “if … then …”</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+</pre></td><td class="code"><pre><span class="title">some_command</span> && {
+    <span class="title">one</span> command
+	a second command
+	and a third command
+}
+</pre></td></tr></table></figure>
+
+<ul>
+<li>test: test “$str1” = “$str2” == [ “$str1” = “$str2” ]</li>
+<li>[[]]: is key word in bash, [[ “$str1” == “$str2” ]] == [ “$str1” = “$str2” ]</li>
+</ul>
+<p>see more about test command in 6.2, table 6.6</p>
+<h3>switch</h3>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class="code"><pre>case $<span class="number">1</span> <span class="keyword">in</span>
+-f)
+    <span class="keyword">...</span>
+	;;
+-d | --directory)
+    <span class="keyword">...</span>
+	;;
+*)
+    echo $<span class="number">1</span>: unknown option &gt;&<span class="number">2</span>
+	exit <span class="number">1</span>
+esac
+</pre></td></tr></table></figure>
+
+<h3>loop</h3>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre><span class="keyword">for</span> i <span class="keyword">in</span> <span class="string">"$@"</span>; do
+    case $i <span class="keyword">in</span>
+	-f) <span class="keyword">...</span>
+	    ;;
+	<span class="keyword">...</span>
+	esac
+done
+</pre></td></tr></table></figure>
+
+<p>an easy way is use command “getopts”, see in 6.4</p>
+<h3>while and until</h3>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre><span class="keyword">while</span> [<span class="keyword">...</span>]; do
+    <span class="keyword">...</span>
+done
+
+until [<span class="keyword">...</span>]; do
+    <span class="keyword">...</span>
+done
+</pre></td></tr></table></figure>
+
+<ul>
+<li>break n</li>
+</ul>
+<h3>exec/./sh/source</h3>
+<ul>
+<li>sh: fork a new sub-shell and back</li>
+<li>./source: run on current shell and back</li>
+<li>exec: run on current shell and no back</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Shell/">Shell</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

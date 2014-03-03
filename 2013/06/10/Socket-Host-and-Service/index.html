@@ -1,0 +1,281 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Socket Host and Service | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="一条Socket通过一个四元组{Remote IP, Remote Port, Local IP, Local Port}来标识。
+其中IP和Port都是数字，不利于人们记忆。所以要把它们映射成容易记忆的字符名：
+
+IP =&gt; 主机名
+Port =&gt; 服务名
+
+因此Socket接口必需支">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Socket Host and Service"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-06-09T16:00:00.000Z"><a href="/2013/06/10/Socket-Host-and-Service/">Jun 10 2013</a></time>
+      
+      
+  
+    <h1 class="title">Socket Host and Service</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>一条Socket通过一个四元组{Remote IP, Remote Port, Local IP, Local Port}来标识。
+其中IP和Port都是数字，不利于人们记忆。所以要把它们映射成容易记忆的字符名：</p>
+<ul>
+<li>IP =&gt; 主机名</li>
+<li>Port =&gt; 服务名</li>
+</ul>
+<p>因此Socket接口必需支持两种映射。</p>
+<h3>IP &lt;==&gt; 主机名</h3>
+<p>Socket中描述主机名的结构是：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="code"><pre>struct hostent {
+    char  *h_name;              /* Official (canonical) <span class="property">name</span> <span class="keyword">of</span> host */
+    char **h_aliases;           /* NULL-terminated array <span class="keyword">of</span> pointers
+                                   <span class="keyword">to</span> <span class="type">alias</span> strings */
+    int    h_addrtype;          /* Address type (AF_INET <span class="keyword">or</span> AF_INET6) */
+    int    h_length;            /* Length (<span class="keyword">in</span> bytes) <span class="keyword">of</span> addresses pointed
+                                   <span class="keyword">to</span> <span class="keyword">by</span> h_addr_list (<span class="number">4</span> bytes <span class="keyword">for</span> AF_INET,
+                                   <span class="number">16</span> bytes <span class="keyword">for</span> AF_INET6) */
+    char **h_addr_list;         /* NULL-terminated array <span class="keyword">of</span> pointers <span class="keyword">to</span>
+                                   host IP addresses (in_addr <span class="keyword">or</span> in6_addr
+                                   structures) <span class="keyword">in</span> network byte order */
+};
+</pre></td></tr></table></figure>
+
+<p>获得目标的<code>struct hostent</code>函数是：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre><span class="comment">// 主机名 =&gt; IP</span>
+<span class="preprocessor">#include &lt;netdb.h&gt;</span>
+extern <span class="keyword">int</span> h_errno;
+<span class="keyword">struct</span> hostent *gethostbyname(<span class="keyword">const</span> <span class="keyword">char</span> *name);
+
+<span class="comment">// IP =&gt; 主机名</span>
+<span class="preprocessor">#include &lt;sys/socket.h&gt;       /* for AF_INET */</span>
+<span class="keyword">struct</span> hostent *gethostbyaddr(<span class="keyword">const</span> <span class="keyword">void</span> *addr, socklen_t len, <span class="keyword">int</span> type);
+</pre></td></tr></table></figure>
+
+<p>通过查看函数接口可以看出，使用目标服务名或者目标IP地址可以获得其<code>struct hostent</code>。
+函数首先查询本地的静态主机文件(/etc/hosts)，如果没有取到则使用DNS协议访问/etc/resolv.conf中配置的名字服务器，查询目标主机信息。这些过程对于函数使用者是透明的。</p>
+<h3>Port &lt;==&gt; 服务名</h3>
+<p>描述服务名的结构是：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre><span class="keyword">struct</span> servent {
+    <span class="keyword">char</span>  *s_name;          <span class="comment">/* Official service name */</span>
+    <span class="keyword">char</span> **s_aliases;       <span class="comment">/* Pointers to aliases (NULL-terminated) */</span>
+    <span class="keyword">int</span>    s_port;          <span class="comment">/* Port number (in network byte order) */</span>
+    <span class="keyword">char</span>  *s_proto;         <span class="comment">/* Protocol (TCP/UDP)*/</span>
+};
+</pre></td></tr></table></figure>
+
+<p>相关的函数是：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+</pre></td><td class="code"><pre><span class="preprocessor">#include &lt;netdb.h&gt;</span>
+<span class="comment">// 服务名 =&gt; Port</span>
+<span class="keyword">struct</span> servent *getservbyname(<span class="keyword">const</span> <span class="keyword">char</span> *name, <span class="keyword">const</span> <span class="keyword">char</span> *proto);
+<span class="comment">// Port =&gt; 服务名</span>
+<span class="keyword">struct</span> servent *getservbyport(<span class="keyword">int</span> port, <span class="keyword">const</span> <span class="keyword">char</span> *proto);
+</pre></td></tr></table></figure>
+
+<p>这些函数仅仅通过查询本地的(/etc/services文件)获得相应服务名。</p>
+<h3>通用型</h3>
+<p>以上函数在早期都不支持IPv6, 并且是<strong>不可重入的</strong>，因为它们都返回指向同一个静态结构的指针(还有错误号变量的问题)。
+下面两个函数更早地支持IPv6和可重入。(P294)</p>
+<p><code>getaddrinfo</code>函数能够处理主机名到IP地址的转换：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre><span class="preprocessor">#include &lt;sys/types.h&gt;</span>
+<span class="preprocessor">#include &lt;sys/socket.h&gt;</span>
+<span class="preprocessor">#include &lt;netdb.h&gt;</span>
+<span class="keyword">int</span> getaddrinfo(<span class="keyword">const</span> <span class="keyword">char</span> *node, <span class="keyword">const</span> <span class="keyword">char</span> *service,
+	            <span class="keyword">const</span> <span class="keyword">struct</span> addrinfo *hints,
+				<span class="keyword">struct</span> addrinfo **res);
+<span class="keyword">void</span> freeaddrinfo(<span class="keyword">struct</span> addrinfo *res);
+</pre></td></tr></table></figure>
+
+<p><code>getnameinfo</code>能够处理服务名到端口的转换：</p>
+<figure class="highlight lang-c"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+</pre></td><td class="code"><pre><span class="preprocessor">#include &lt;sys/socket.h&gt;</span>
+<span class="preprocessor">#include &lt;netdb.h&gt;</span>
+<span class="keyword">int</span> getnameinfo(<span class="keyword">const</span> <span class="keyword">struct</span> sockaddr *sa, socklen_t salen,
+                <span class="keyword">char</span> *host, size_t hostlen,
+                <span class="keyword">char</span> *serv, size_t servlen, <span class="keyword">int</span> flags);
+</pre></td></tr></table></figure>
+
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

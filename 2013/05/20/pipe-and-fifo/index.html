@@ -1,0 +1,200 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>PIPE and FIFO | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="PIPE: (无名)管道，通常用于亲缘关系的进程间
+FIFO: 命名管道，可用于无亲缘关系的进程间
+
+PIPE和FIFO都通过read()和write()函数访问。
+PIPE
+1
+2
+#include &lt;unistd.h&gt;
+int pipe(int fd[2]);
+
+
+原始的PIPE是半">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="PIPE and FIFO"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-05-19T16:00:00.000Z"><a href="/2013/05/20/pipe-and-fifo/">May 20 2013</a></time>
+      
+      
+  
+    <h1 class="title">PIPE and FIFO</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <ul>
+<li>PIPE: (无名)管道，通常用于亲缘关系的进程间</li>
+<li>FIFO: 命名管道，可用于无亲缘关系的进程间</li>
+</ul>
+<p>PIPE和FIFO都通过<code>read()</code>和<code>write()</code>函数访问。</p>
+<h3>PIPE</h3>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="preprocessor">#include &lt;unistd.h&gt;</span>
+<span class="keyword">int</span> pipe(<span class="keyword">int</span> fd[<span class="number">2</span>]);
+</pre></td></tr></table></figure>
+
+<p>原始的PIPE是半双共工。
+PIPE常用于父子(fork)进程间数据的<strong>单向</strong>发送，即半双工。
+当需要一个全双工的数据流时，必需创建两个管道，每个方向一个。</p>
+<p>现在很多UNIX都提供全双工的PIPE。
+因此只需创建一个管道即可实现全双工的数据流。</p>
+<h3>FIFO</h3>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="preprocessor">#include &lt;sys/types.h&gt;</span>
+<span class="preprocessor">#include &lt;sys/stat.h&gt;</span>
+<span class="keyword">int</span> mkfifo(<span class="keyword">const</span> <span class="keyword">char</span>* pathname, mode_t mode);
+</pre></td></tr></table></figure>
+
+<p>FIFO用于实现命名的半双工数据流。
+用户程序可以通过<code>open()</code>打开指定路径的FIFO文件进行读或者写。
+<code>read()</code>总是读取数据的开头，<code>write()</code>总是写入数据的末尾。
+当没有任何进程打开FIFO写时，那么打开该FIFO来读的进程将阻塞。</p>
+<p>注意：如果PIPE写入的字节数小于PIPE_BUF，那么write会保证是<strong>原子</strong>的。
+是否block对此也无影响。
+但是如果write写入的字节数大于PIPE_BUF，那么write不保证是原子的。</p>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

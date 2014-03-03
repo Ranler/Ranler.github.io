@@ -1,0 +1,301 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>TCP | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="TCP(Transmission Control Protocol) provides a connection-oriented, reliabled, byte stream service. So broadcasting and multicasting aren&amp;#39;t applica">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="TCP"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-06-04T16:00:00.000Z"><a href="/2013/06/05/TCP/">Jun 5 2013</a></time>
+      
+      
+  
+    <h1 class="title">TCP</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>TCP(Transmission Control Protocol) provides a connection-oriented, reliabled, byte stream service. So broadcasting and multicasting aren&#39;t applicable to TCP.</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+</pre></td><td class="code"><pre><span class="comment">APP(byte</span> <span class="comment">stream)</span>
+    <span class="comment">||</span>
+  <span class="comment">	||</span>                <span class="comment">User</span> <span class="comment">Space</span>
+   <span class="comment">	||</span>           <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>
+    <span class="comment">||</span>                <span class="comment">Kernel</span> <span class="comment">Space</span>
+<span class="comment">	\/</span>
+<span class="comment">TCP(segment)</span>
+    <span class="comment">||</span>
+<span class="comment">	||</span>
+<span class="comment">	||</span>          <span class="comment">TCP</span> <span class="comment">segment</span> <span class="comment">data</span> <span class="comment">field</span> <span class="comment">max</span> <span class="comment">size:</span> <span class="comment">MSS</span>
+<span class="comment">	||</span>          <span class="comment">MSS</span> &lt;<span class="comment">=</span> <span class="comment">MTU</span>-<span class="comment">40(IPv4)/MTU</span>-<span class="comment">60(IPv6)</span>
+<span class="comment">	||</span>
+<span class="comment">	\/</span>
+<span class="comment">IP(datagram)</span>
+    <span class="comment">||</span>
+<span class="comment">	||</span>
+<span class="comment">	||</span>          <span class="comment">IP</span> <span class="comment">datagram</span> <span class="comment">max</span> <span class="comment">size:</span> <span class="comment">MTU</span>
+<span class="comment">	||</span>          <span class="comment">MTU</span> <span class="comment">is</span> <span class="comment">defined</span> <span class="comment">by</span> <span class="comment">Hardware</span> <span class="comment">of</span> <span class="comment">Network</span>
+<span class="comment">	||</span>
+<span class="comment">	\/</span>
+<span class="comment">Hardware</span> <span class="comment">and</span> <span class="comment">Driver
+</pre></td></tr></table></figure>
+
+<h3>TCP Header</h3>
+<p><code>| IP header(20B) | TCP header(20~60B) | TCP data |</code></p>
+<p>TCP header(20~60B):</p>
+<ul>
+<li>source port number(2B)</li>
+<li>destination port number(2B)</li>
+<li>sequence number(4B): order in segment sequence</li>
+<li>acknowledgement number(4B): next sequence number expects to receive</li>
+<li>(2B)<ul>
+<li>header length(4bit): length of 4B, so the max size of TCP header is 60B</li>
+<li>reserved(6bit)</li>
+<li>URG: <code>urgent pointer</code> is valid</li>
+<li>ACK: <code>acknowledgement number</code> is valid</li>
+<li>PSH: pass this data to app as soon as possible</li>
+<li>RST: reset the connection</li>
+<li>SYN: initiate a connection, use <code>sequence number field</code> for <code>initial sequence number(ISN)</code></li>
+<li>FIN: the sender is finished sending data</li>
+</ul>
+</li>
+<li>window size(2B)</li>
+<li>TCP checksum(2B): for TCP header and TCP data</li>
+<li>urgent pointer(2B): used by TCP&#39;s urgent mode</li>
+<li>options(0~40B): set maximum segment size(MSS) with SYN when create a connection</li>
+</ul>
+<p>socket pair: {Server IP, Server Port, Client IP, Client Port}</p>
+<h3>TCP Connection Establishment and Termination</h3>
+<h5>Establishment</h5>
+<p><strong>three-way handshake</strong>:</p>
+<ol>
+<li>The client sends a SYN segment, normally including:<ul>
+<li>port number of server in <code>destination port number</code> field</li>
+<li>initial sequence number(ISN) of client in <code>sequence number</code> field</li>
+<li>max segment size(MSS) of client in <code>option</code> field</li>
+</ul>
+</li>
+<li>The server responds a SYN/ACK segment, including:<ul>
+<li>initial sequence number(ISN) of server in <code>sequence number</code> field</li>
+<li>acknowlegement number for client SYN segment in <code>acknowlegment number</code> field</li>
+<li>max segment size(MSS) of server in <code>option</code> field</li>
+</ul>
+</li>
+<li>The client responds a ACK segment, including:<ul>
+<li>acknowlegement number for server SYN segment in <code>acknowlegment number</code> field</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre>1. Client  ====(SYN c, mss)=============&gt;  Server    (active open)
+2. Client  <span class="tag">&lt;<span class="title">===(SYN</span> <span class="attribute">s</span>, <span class="attribute">ACK</span> <span class="attribute">c</span>+<span class="attribute">1</span>, <span class="attribute">mss</span>)=<span class="value">====</span>  <span class="attribute">Server</span>    (<span class="attribute">passive</span> <span class="attribute">open</span>)
+<span class="attribute">3.</span> <span class="attribute">Client</span>  =<span class="value">===(ACK</span> <span class="attribute">s</span>+<span class="attribute">1</span>)=<span class="value">===============</span>&gt;</span>  Server
+</pre></td></tr></table></figure>
+
+<p>TCP provides a <strong>full-duplex</strong> service so <strong>each</strong> end of a connection must maintain a sequence number of data flowing in each direction.
+There are two different initial sequence numbers.</p>
+<h5>Termination</h5>
+<p>Since a TCP connection is full-duplex, each direction must be shutdown independently.
+A TCP can still send data after receiving a FIN(<strong>half-close</strong>).</p>
+<ol>
+<li>first end send a FIN segment</li>
+<li>second end responds a ACK segment, including:<ul>
+<li>acknowlegement number plus one for FIN segment in <code>acknowlegment number</code> field</li>
+</ul>
+</li>
+<li>second end send a FIN segment</li>
+<li>first end responds a ACK segment, including:<ul>
+<li>acknowlegement number plus one for FIN segment in <code>acknowlegment number</code> field</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+</pre></td><td class="code"><pre>1. Client  ====(FIN)=====&gt;  Server
+2. Client  <span class="tag">&lt;<span class="title">===(ACK)======</span>  <span class="attribute">Server</span>
+
+<span class="attribute">3.</span> <span class="attribute">Client</span>  &lt;=<span class="value">==(FIN)======</span>  <span class="attribute">Server</span>
+<span class="attribute">4.</span> <span class="attribute">Client</span>  =<span class="value">===(ACK)=====</span>&gt;</span>  Server
+</pre></td></tr></table></figure>
+
+<p>The application could calls <code>shutdown()</code> instead of calling<code>close</code> to terminate one side connection.</p>
+<h3>Some Details</h3>
+<h5>Maximum Segment Size(MSS)</h5>
+<p>MSS is max size for data field for tcp segment.
+Default MSS is 536B.</p>
+<p>And for an Ethernet, MTU is 1500, so the best MSS is 1460.</p>
+<h5>TIME_WAIT</h5>
+<p><strong>Maximum segment lifetime(MSL)</strong> is the maximum amount of time any segment can exist in the network before being discarded. 
+When TCP performs an active close, and sends the final ACK, that connection must stay in the <strong>TIME_WAIT</strong> state for twice the MSL.
+So TIME_WAIT state is also called the 2MSL wait state(2 minutes x 2).</p>
+<p>When connection is in TIME_WAIT state, socket pair for the connection cannot be reused. The connection can only be <strong>reused</strong> when the TIME_WAIT wait is over.
+This is not a problem for clients because clients use ephemeral ports. But server use well-known ports. It may take from 1 to 4 minutes before the server can be restarted.</p>
+<p>If specify the <code>SO_REUSEADDR</code> option for socket, the socket will be reused the same port but only if the server does the active close.</p>
+<h3>Reference</h3>
+<ul>
+<li>TCP/IP v1</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Network/">Network</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Java IncompatibleClassChangeError 异常一则 | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="涉及两个模块：
+
+A模块, 提供了A.jar和源码
+B模块, 提供了B.jar和dummy源码
+
+以上提供的jar文件不知什么环境下打的什么版本的包。
+首先只部署A.jar文件到Linux服务器上，测试运行，发现抛出NoClassDefFoundError异常。
+查看A模块源码，发现A模块依赖B模块">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Java IncompatibleClassChangeError 异常一则"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-03-26T16:00:00.000Z"><a href="/2013/03/27/Java-IncompatibleClassChangeError-Exception/">Mar 27 2013</a></time>
+      
+      
+  
+    <h1 class="title">Java IncompatibleClassChangeError 异常一则</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>涉及两个模块：</p>
+<ul>
+<li>A模块, 提供了A.jar和源码</li>
+<li>B模块, 提供了B.jar和dummy源码</li>
+</ul>
+<p>以上提供的jar文件不知什么环境下打的什么版本的包。</p>
+<p>首先只部署A.jar文件到Linux服务器上，测试运行，发现抛出<code>NoClassDefFoundError</code>异常。
+查看A模块源码，发现A模块依赖B模块用于license认证，缺少的class指向B模块下的类。</p>
+<p>于是部署B.jar文件到Linux服务器上，测试运行，发现B.jar抛出dll文件未找到的异常。
+经过反编译B.jar，发现B.jar是Windows下的真实license认证程序，需要通过JNI去调用dll，
+在Linux平台下肯定执行不正确。</p>
+<p>下一步把A模块的源码和B模块的dummy源码合并，打成AB.jar包。
+部署AB.jar到Linux服务器上，测试正常。</p>
+<p>然后接下来还是准备把A模块和B模块单独打包。
+于是把dummy源码打成newB.jar，并和A.jar一起部署到服务器上。
+测试运行，抛出<code>IncompatibleClassChangeError</code>。</p>
+<p>寻找原因，发现反编译的B.jar中，之前<code>NoClassDefFoundError</code>的class License
+在B.jar中是Interface类型，而在dummy源码中是Class类型。
+而之前估计A模块的源码是通过依赖B.jar来打成包的，
+在A.jar中理所当然认为License是Interface类型。
+而部署的newB.jar中License是Class类型，因此抛出了<code>IncompatibleClassChangeError</code>异常。
+随后调整A模块依赖newB.jar来打成newA.jar包，部署测试，运行成功。</p>
+<p>因此此次<code>IncompatibleClassChangeError</code>异常是同一个符号名类型不一致的原因。
+有个疑问是什么情况下是compatibleClassChange？</p>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/JVM/">JVM</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Storage 1: Disk and Volume | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="1. 硬盘磁头寻道方式
+
+FCFS
+SSTF
+SCAN and C-SCAN
+LOOK and C-LOOK
+
+2. 磁盘接口技术
+
+ATA
+IDE(Parallel ATA, PATA): 访问模式PIO, DMA, Ultra DMA
+SATA: SATA 1.0, SATA 2.0, eSAT">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Storage 1: Disk and Volume"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-08-06T16:00:00.000Z"><a href="/2013/08/07/Storage-1/">Aug 7 2013</a></time>
+      
+      
+  
+    <h1 class="title">Storage 1: Disk and Volume</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <h3>1. 硬盘磁头寻道方式</h3>
+<ul>
+<li>FCFS</li>
+<li>SSTF</li>
+<li>SCAN and C-SCAN</li>
+<li>LOOK and C-LOOK</li>
+</ul>
+<h3>2. 磁盘接口技术</h3>
+<ol>
+<li>ATA<ul>
+<li>IDE(Parallel ATA, PATA): 访问模式PIO, DMA, Ultra DMA</li>
+<li>SATA: SATA 1.0, SATA 2.0, eSATA。SATA盘。</li>
+</ul>
+</li>
+<li>SCSI<ul>
+<li>Parallel SCSI</li>
+<li>Serial SCSI(SAS)：SAS盘</li>
+<li>IBM专用Serial SSA(SSA)</li>
+<li>承载于FabreChannel协议的串行FC接口(FCP)：FC盘</li>
+</ul>
+</li>
+</ol>
+<p>ATA控制器或SCSI控制器以驱动的形式给OS提供统一的调用接口。
+CPU发送x86存储指令给控制器的驱动程序，控制器再硬件转换为ATA命令或SCSI命令发送给磁盘驱动器。</p>
+<h3>3. RAID</h3>
+<p>基本RAID类型： 0-6</p>
+<p>高级RAID：</p>
+<ul>
+<li>RAID10: RAID 0+1</li>
+<li>RAID30: RAID 0+3</li>
+<li>RAID50: RAID 0+5</li>
+</ul>
+<p>硬件RAID：</p>
+<ul>
+<li>SCSI RAID卡(PCI-&gt;RAID控制器-&gt;SCSI控制器)，带RAM(缓存)，ROM(程序)。</li>
+</ul>
+<p>软RAID：</p>
+<ul>
+<li>Windows动态磁盘管理：跨区卷(RAID0)，带区卷(RAID0)，镜像卷(RAID1)，RAID5卷</li>
+<li>Linux software RAID</li>
+</ul>
+<h3>4. 虚拟/逻辑磁盘</h3>
+<p>采用相同RAID类型的多个磁盘组成一个RAID GROUP。
+一个RAID Group物理上给外界一个单一磁盘的视图。
+但是这个单一磁盘可以继续分割成多个虚拟/逻辑磁盘。</p>
+<pre><code>                                                                                                <span class="comment">/</span> <span class="comment">Partition</span> <span class="comment">1</span>
+<span class="comment">Physical</span> <span class="comment">Disk</span> <span class="comment">1</span>  <span class="comment">\</span>                                         <span class="comment">/</span> <span class="comment">Virtual/Logical</span> <span class="comment">Disk</span> <span class="comment">1</span> <span class="literal">-</span><span class="literal">-</span><span class="comment">(MBR/GPT)</span>-<span class="literal">-</span> <span class="comment">Partition</span> <span class="comment">2</span>
+<span class="comment">Physical</span> <span class="comment">Disk</span> <span class="comment">2</span>  <span class="literal">-</span><span class="literal">-</span><span class="comment">(RAID)</span>-<span class="literal">-</span> <span class="comment">RAID</span> <span class="comment">Group</span> <span class="literal">-</span><span class="literal">-</span><span class="comment">(RAID</span> <span class="comment">Controller)</span>-<span class="literal">-</span> <span class="comment">Virtual/Logical</span> <span class="comment">Disk</span> <span class="comment">2</span>             <span class="comment">\</span> <span class="comment">Partition</span> <span class="comment">3</span>
+<span class="comment">Physical</span> <span class="comment">Disk</span> <span class="comment">2</span>  <span class="comment">/</span>                                         <span class="comment">\</span> <span class="comment">Virtual/Logical</span> <span class="comment">Disk</span> <span class="comment">3</span>
+                                                           <span class="comment">\</span> <span class="comment">Virtual/Logical</span> <span class="comment">Disk</span> <span class="comment">4</code></pre>
+<h3>5. 卷管理器</h3>
+<p>卷管理器(Volume Manager, VM)在OS层将虚拟/逻辑磁盘进行组合。
+主要产品有：</p>
+<ul>
+<li>Logical Disk Manager(LDM): MicroSoft</li>
+<li>Logical Volume Manager(LVM): Linux, AIX, HPUX</li>
+<li>Disk Suite: Solaris</li>
+<li>VxVM</li>
+</ul>
+<p>LVM的主要思想是：首先把一个Virtual/Logical Disk看成一个Physical Volmue。
+把多个Physical Volume组成一个VolumeGroup，在VolumeGroup中再划分Logical Volume。
+每个Logical Volume从OS角度还是一个磁盘。</p>
+<p>VM的好处是：</p>
+<ol>
+<li>可以跨RAID GROUP组成Logical Volume提供给OS</li>
+<li>随时扩容</li>
+</ol>
+<p>地址寻找过程：</p>
+<ol>
+<li>OS API：文件路径+文件中的偏移字节</li>
+<li>文件系统： Logical Volume中的LBA</li>
+<li>VM: Logical Disk中的LBA</li>
+<li>RAID: Physical Disk中的LBA</li>
+</ol>
+<h3>Reference</h3>
+<ul>
+<li>大话存储</li>
+<li><a href="http://zh.wikipedia.org/wiki/Scsi" target="_blank">http://zh.wikipedia.org/wiki/Scsi</a></li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Storage/">Storage</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

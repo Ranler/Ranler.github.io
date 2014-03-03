@@ -1,0 +1,641 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Completely Fair Scheduler | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="History of linux schedulers:
+
+Linux 1.2: circular queue, round-robin
+Linux 2.2: scheduling classes and symmetric multiprocessing
+Linux 2.4: O(N) simpl">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Completely Fair Scheduler"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-08-22T16:00:00.000Z"><a href="/2013/08/23/CFS/">Aug 23 2013</a></time>
+      
+      
+  
+    <h1 class="title">Completely Fair Scheduler</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>History of linux schedulers:</p>
+<ul>
+<li>Linux 1.2: circular queue, round-robin</li>
+<li>Linux 2.2: scheduling classes and symmetric multiprocessing</li>
+<li>Linux 2.4: O(N) simple scheduler</li>
+<li>Linux 2.6: O(1) scheduler</li>
+<li>Linux 2.6.30: CFS</li>
+</ul>
+<h3>原理</h3>
+<p>CFS调度器把CPU资源公平地分给每一个处在就绪态的进程。
+不考虑优先级的话，每个进程平分CPU时间。
+CFS使用<strong>virtual runtime(vruntime)</strong>表示每个进程已经消耗的CPU时间。
+当发生抢占时，CFS从就绪进程队列中选择vruntime最小的那个进程来执行一段时间，直到中断或被抢占。
+CFS没有直接使用时间片。</p>
+<p>Linux进程可以通过设置nice值来调整进程的优先级。
+CFS对进程优先级有特殊的处理方式。
+CFS并不维护用多个优先级队列，而是在更新vruntime时根据进程优先级计算进程消耗的CPU时间。
+如果进程nice值高，优先级低，那么增加的vruntime等于消耗的CPU时间放大一个比例。
+如果进程nice值低，优先级高，那么增加的vruntime等于消耗的CPU时间缩小一个比例。</p>
+<pre><code>实际运行时间 = 调度周期 * 进程权重 / 所有进程权重之和
+vruntime = 实际运行时间 <span class="bullet">* 1024 / 进程权重 = 调度周期 *</span> 1024 / 所有进程权重之和</code></pre>
+<p>可以看出记录的vruntime和进程的权重无关。
+在一个调度周期内，虽然进程实际运行的时间不一样，但是他们增加的vruntime是相同的。
+调度时间和vruntime是等比例增加的。</p>
+<p>CFS使用红黑树保存就绪进程队列。
+红黑树使用进程的vruntime作为索引。因此，红黑树中最左边节点的vruntime最小。
+插入和删除进程节点的效率是O(lgn)。</p>
+<p>CFS调度器采用per cpu run queue。
+在目前的CFS调度器中，每个CPU只维护本地run queue中所有进程的公平性。
+为了实现跨CPU的调度公平性，CFS必须定时进行load balance，将一些进程从繁忙的CPU的run queue中移到其他空闲的run queue中。
+这个load balance的过程需要获得其他run queue的锁。</p>
+<h3>数据结构(Linux 3.9)</h3>
+<ul>
+<li>进程单元: <code>task_struct</code></li>
+<li>进程调度单元: <code>sched_entity</code>(se)，包含<code>rb_node</code>结构的红黑树节点</li>
+<li>CFS调度队列: <code>cfs_rq</code>，属于rq调度子队列</li>
+</ul>
+<pre><code><span class="comment">task_struct</span>
+    <span class="comment">|</span>
+    <span class="comment">|</span>-<span class="literal">-</span><span class="literal">-</span>&gt; <span class="comment">sched_entity</span>
+                 <span class="comment">|</span>
+                 <span class="comment">|</span>-<span class="literal">-</span><span class="literal">-</span>&gt; <span class="comment">rb_node</span> <span class="comment">==</span>&gt; <span class="comment">(Red</span>-<span class="comment">Balck</span> <span class="comment">Tree)</span>  &lt;<span class="comment">==</span> <span class="comment">cfs_rq</code></pre>
+<p><code>task_struct</code>:</p>
+<pre><code class="lang-.c">// include/linux/sched.h
+<span class="number">1201</span> struct task_struct {
+             <span class="keyword">...</span>
+<span class="number">1217</span>         struct sched_entity se;    // 调度单元
+             <span class="keyword">...</span>
+<span class="number">1580</span> };</code></pre>
+<p><code>sched_entity</code>:</p>
+<pre><code class="lang-.c">// include/linux/sched<span class="preprocessor">.h</span>
+<span class="number">1139</span> struct sched_entity {
+<span class="number">1140</span>         struct load_weight      load<span class="comment">;           /* for load-balancing */</span>
+<span class="number">1141</span>         struct rb_node          run_node<span class="comment">;       // RB-tree 节点</span>
+<span class="number">1142</span>         struct list_head        group_node<span class="comment">;</span>
+<span class="number">1143</span>         unsigned int            on_rq<span class="comment">;</span>
+<span class="number">1144</span> 
+<span class="number">1145</span>         u64                     exec_start<span class="comment">;</span>
+<span class="number">1146</span>         u64                     sum_exec_runtime<span class="comment">;</span>
+<span class="number">1147</span>         u64                     vruntime<span class="comment">;</span>
+<span class="number">1148</span>         u64                     prev_sum_exec_runtime<span class="comment">;</span>
+<span class="number">1149</span> 
+<span class="number">1150</span>         u64                     nr_migrations<span class="comment">;</span>
+<span class="number">1151</span> 
+<span class="number">1156</span> <span class="preprocessor">#ifdef CONFIG_FAIR_GROUP_SCHED</span>
+<span class="number">1157</span>         struct sched_entity     *parent<span class="comment">;</span>
+<span class="number">1158</span>         <span class="comment">/* rq on which this entity is (to be) queued: */</span>
+<span class="number">1159</span>         struct cfs_rq           *cfs_rq<span class="comment">;</span>
+<span class="number">1160</span>         <span class="comment">/* rq "owned" by this entity/group: */</span>
+<span class="number">1161</span>         struct cfs_rq           *my_q<span class="comment">;</span>
+<span class="number">1162</span> <span class="preprocessor">#endif</span>
+             ...
+<span class="number">1173</span> }<span class="comment">;</span></code></pre>
+<p><code>cfs_rq</code>:</p>
+<pre><code class="lang-.c">// include/linux/sched.h
+ <span class="number">206</span> struct cfs_rq {
+ <span class="number">207</span>         struct load_weight load;
+ <span class="number">208</span>         unsigned int nr_running, h_nr_running;     // 队列上可运行的进程总数
+ <span class="number">209</span> 
+ <span class="number">210</span>         u64 exec_clock; 
+ <span class="number">211</span>         u64 min_vruntime;                          // 所有进程中最小的vruntime
+             <span class="keyword">...</span>
+ <span class="number">216</span>         struct rb_root tasks_timeline;    // 指向红黑树root
+ <span class="number">217</span>         struct rb_node *rb_leftmost;      // 指向红黑树最左边节点
+ <span class="number">218</span> 
+ <span class="number">219</span>         /*
+ <span class="number">220</span>          * <span class="string">'curr'</span> points to currently running entity on this cfs_rq.
+ <span class="number">221</span>          * It is set to <span class="literal">NULL</span> otherwise (i.e when none are currently running).
+ <span class="number">222</span>          */
+ <span class="number">223</span>         struct sched_entity *curr, *<span class="keyword">next</span>, *last, *skip;
+             <span class="keyword">...</span>
+ <span class="number">287</span> };</code></pre>
+<h3>调度器接口</h3>
+<p>调度类(scheduling classes)<code>sched_class</code>定义了每一种调度类型必须包含的接口，类似面向对象中的接口类。调度类目前有以下三种类型：</p>
+<ul>
+<li><code>rt_sched_class</code></li>
+<li><code>fair_sched_class</code></li>
+<li><code>idle_sched_class</code></li>
+</ul>
+<p>它们的共同接口是：</p>
+<pre><code class="lang-.c"><span class="number">1041</span> <span class="keyword">struct</span> sched_class {
+<span class="number">1042</span>         <span class="keyword">const</span> <span class="keyword">struct</span> sched_class *next;                                              <span class="comment">// 调度类单向链表，顺序编译时确定</span>
+<span class="number">1043</span> 
+<span class="number">1044</span>         <span class="keyword">void</span> (*enqueue_task) (<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="keyword">int</span> flags);      <span class="comment">// 进程入队，在进程状态变为TASK_RUNNING时发生</span>
+<span class="number">1045</span>         <span class="keyword">void</span> (*dequeue_task) (<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="keyword">int</span> flags);      <span class="comment">// 进程出队</span>
+<span class="number">1046</span>         <span class="keyword">void</span> (*yield_task) (<span class="keyword">struct</span> rq *rq);                                          <span class="comment">// 挂起调度器</span>
+<span class="number">1047</span>         <span class="keyword">bool</span> (*yield_to_task) (<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="keyword">bool</span> preempt);  <span class="comment">// 挂起进程</span>
+<span class="number">1048</span> 
+<span class="number">1049</span>         <span class="keyword">void</span> (*check_preempt_curr) (<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="keyword">int</span> flags);<span class="comment">// 检查当前进程能否被p指向的进程抢占</span>
+<span class="number">1050</span> 
+<span class="number">1051</span>         <span class="keyword">struct</span> task_struct * (*pick_next_task) (<span class="keyword">struct</span> rq *rq);                      <span class="comment">// 取出下一个执行进程</span>
+<span class="number">1052</span>         <span class="keyword">void</span> (*put_prev_task) (<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p);                <span class="comment">// 在用另一个进程代替当前运行的进程之前调用</span>
+             ...
+<span class="number">1070</span>         <span class="keyword">void</span> (*set_curr_task) (<span class="keyword">struct</span> rq *rq);
+<span class="number">1071</span>         <span class="keyword">void</span> (*task_tick) (<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *p, <span class="keyword">int</span> queued);
+<span class="number">1072</span>         <span class="keyword">void</span> (*task_fork) (<span class="keyword">struct</span> task_struct *p);
+<span class="number">1073</span> 
+<span class="number">1074</span>         <span class="keyword">void</span> (*switched_from) (<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task);
+<span class="number">1075</span>         <span class="keyword">void</span> (*switched_to) (<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task);
+<span class="number">1076</span>         <span class="keyword">void</span> (*prio_changed) (<span class="keyword">struct</span> rq *this_rq, <span class="keyword">struct</span> task_struct *task,
+<span class="number">1077</span>                              <span class="keyword">int</span> oldprio);
+<span class="number">1078</span> 
+<span class="number">1079</span>         unsigned <span class="keyword">int</span> (*get_rr_interval) (<span class="keyword">struct</span> rq *rq,
+<span class="number">1080</span>                                          <span class="keyword">struct</span> task_struct *task);
+<span class="number">1081</span> 
+<span class="number">1082</span> <span class="preprocessor">#ifdef CONFIG_FAIR_GROUP_SCHED</span>
+<span class="number">1083</span>         <span class="keyword">void</span> (*task_move_group) (<span class="keyword">struct</span> task_struct *p, <span class="keyword">int</span> on_rq);
+<span class="number">1084</span> <span class="preprocessor">#<span class="keyword">endif</span></span>
+<span class="number">1085</span> };</code></pre>
+<ul>
+<li><code>schedule()</code>: 执行抢占</li>
+</ul>
+<h3>CFS实现</h3>
+<h5>vruntime 更新</h5>
+<p>sysctl_sched_latency = nr_running / sched_nr_latency</p>
+<p>/proc/sys/kernel/sched_latency_ns
+/proc/sys/kernel/sched_min_granularity_ns</p>
+<pre><code class="lang-.c">vruntime = cfs_rq-&gt;min_vruntime
+
+<span class="function"><span class="title">if</span> <span class="params">(initial)</span> {
+    <span class="title">vruntime</span> += <span class="title">sched_vslice</span><span class="params">()</span>
+} <span class="title">else</span> {
+    <span class="title">vruntime</span> -= <span class="title">sysctl_sched_latency</span>
+}
+
+<span class="title">vruntime</span> = <span class="title">max</span><span class="params">(se-&gt;vruntime, vruntime)</span>
+<span class="title">se</span>-&gt;</span>vruntime = vruntime</code></pre>
+<ul>
+<li>sched_vslice是做什么的？ 该函数根据被调度的对象计算了一个调度周期的虚拟运行时</li>
+<li>为什么要加上sched_vslice？  不能总让新的进程占用CPU</li>
+<li>sysctl_sched_latency是什么？ 一个调度周期，由__sched_period()计算</li>
+<li>为什么要减去sysctl_sched_latency？ 一个进程睡眠了很久</li>
+<li>为什么要取二者的最大值? 一个进程仅仅睡眠了一会儿</li>
+</ul>
+<h5>check_preempt_curr()</h5>
+<pre><code class="lang-.c"><span class="number">3505</span> static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_flags)
+<span class="number">3506</span> {
+<span class="number">3507</span>         struct task_struct *curr = rq-&gt;curr;
+<span class="number">3508</span>         struct sched_entity *se = &amp;curr-&gt;se, *pse = &amp;p-&gt;se;
+<span class="number">3509</span>         struct cfs_rq *cfs_rq = task_cfs_rq(curr);
+<span class="number">3510</span>         int scale = cfs_rq-&gt;nr_running &gt;= sched_nr_latency;
+<span class="number">3511</span>         int next_buddy_marked = <span class="number">0</span>;
+<span class="number">3512</span> 
+<span class="number">3513</span>         <span class="keyword">if</span> (unlikely(se == pse))
+<span class="number">3514</span>                 <span class="constant">return</span>;
+<span class="number">3515</span> 
+<span class="number">3516</span>         /*
+<span class="number">3517</span>          * This <span class="keyword">is</span> possible <span class="keyword">from</span> callers such <span class="keyword">as</span> move_task(), <span class="keyword">in</span> which we
+<span class="number">3518</span>          * unconditionally check_prempt_curr() <span class="keyword">after</span> an enqueue (which may have
+<span class="number">3519</span>          * lead <span class="keyword">to</span> a throttle).  This both saves work <span class="keyword">and</span> prevents <span class="constant">false</span>
+<span class="number">3520</span>          * next-buddy nomination <span class="keyword">below</span>.
+<span class="number">3521</span>          */
+<span class="number">3522</span>         <span class="keyword">if</span> (unlikely(throttled_hierarchy(cfs_rq_of(pse))))
+<span class="number">3523</span>                 <span class="constant">return</span>;
+<span class="number">3524</span> 
+<span class="number">3525</span>         <span class="keyword">if</span> (sched_feat(NEXT_BUDDY) &amp;&amp; scale &amp;&amp; !(wake_flags &amp; WF_FORK)) {
+<span class="number">3526</span>                 set_next_buddy(pse);
+<span class="number">3527</span>                 next_buddy_marked = <span class="number">1</span>;
+<span class="number">3528</span>         }
+<span class="number">3529</span> 
+<span class="number">3530</span>         /*
+<span class="number">3531</span>          * We can come here <span class="keyword">with</span> TIF_NEED_RESCHED already <span class="keyword">set</span> <span class="keyword">from</span> new task
+<span class="number">3532</span>          * wake up path.
+<span class="number">3533</span>          *
+<span class="number">3534</span>          * Note: this also catches <span class="keyword">the</span> edge-case <span class="keyword">of</span> curr being <span class="keyword">in</span> a throttled
+<span class="number">3535</span>          * group (e.g. via set_curr_task), <span class="keyword">since</span> update_curr() (<span class="keyword">in</span> <span class="keyword">the</span>
+<span class="number">3536</span>          * enqueue <span class="keyword">of</span> curr) will have resulted <span class="keyword">in</span> resched being <span class="keyword">set</span>.  This
+<span class="number">3537</span>          * prevents us <span class="keyword">from</span> potentially nominating <span class="keyword">it</span> <span class="keyword">as</span> a <span class="constant">false</span> LAST_BUDDY
+<span class="number">3538</span>          * <span class="keyword">below</span>.
+<span class="number">3539</span>          */
+<span class="number">3540</span>         <span class="keyword">if</span> (test_tsk_need_resched(curr))
+<span class="number">3541</span>                 <span class="constant">return</span>;
+<span class="number">3542</span> 
+<span class="number">3543</span>         /* Idle tasks are <span class="keyword">by</span> definition preempted <span class="keyword">by</span> non-idle tasks. */
+<span class="number">3544</span>         <span class="keyword">if</span> (unlikely(curr-&gt;policy == SCHED_IDLE) &amp;&amp;
+<span class="number">3545</span>             likely(p-&gt;policy != SCHED_IDLE))
+<span class="number">3546</span>                 goto preempt;
+<span class="number">3547</span> 
+<span class="number">3548</span>         /*
+<span class="number">3549</span>          * Batch <span class="keyword">and</span> idle tasks do <span class="keyword">not</span> preempt non-idle tasks (their preemption
+<span class="number">3550</span>          * <span class="keyword">is</span> driven <span class="keyword">by</span> <span class="keyword">the</span> tick):
+<span class="number">3551</span>          */
+<span class="number">3552</span>         <span class="keyword">if</span> (unlikely(p-&gt;policy != SCHED_NORMAL) || !sched_feat(WAKEUP_PREEMPTION))
+<span class="number">3553</span>                 <span class="constant">return</span>;
+<span class="number">3554</span> 
+<span class="number">3555</span>         find_matching_se(&amp;se, &amp;pse);
+<span class="number">3556</span>         update_curr(cfs_rq_of(se));
+<span class="number">3557</span>         BUG_ON(!pse);
+<span class="number">3558</span>         <span class="keyword">if</span> (wakeup_preempt_entity(se, pse) == <span class="number">1</span>) {
+<span class="number">3559</span>                 /*
+<span class="number">3560</span>                  * Bias pick_next <span class="keyword">to</span> pick <span class="keyword">the</span> sched entity <span class="keyword">that</span> <span class="keyword">is</span>
+<span class="number">3561</span>                  * triggering this preemption.
+<span class="number">3562</span>                  */
+<span class="number">3563</span>                 <span class="keyword">if</span> (!next_buddy_marked)
+<span class="number">3564</span>                         set_next_buddy(pse);
+<span class="number">3565</span>                 goto preempt;
+<span class="number">3566</span>         }
+<span class="number">3567</span> 
+<span class="number">3568</span>         <span class="constant">return</span>;
+<span class="number">3569</span> 
+<span class="number">3570</span> preempt:
+<span class="number">3571</span>         resched_task(curr);
+<span class="number">3572</span>         /*
+<span class="number">3573</span>          * Only <span class="keyword">set</span> <span class="keyword">the</span> backward buddy when <span class="keyword">the</span> current task <span class="keyword">is</span> still
+<span class="number">3574</span>          * <span class="function_start"><span class="keyword">on</span> <span class="title">the</span></span> rq. This can happen when a wakeup gets interleaved
+<span class="number">3575</span>          * <span class="keyword">with</span> schedule <span class="function_start"><span class="keyword">on</span> <span class="title">the</span></span> -&gt;pre_schedule() <span class="keyword">or</span> idle_balance()
+<span class="number">3576</span>          * point, either <span class="keyword">of</span> which can * drop <span class="keyword">the</span> rq lock.
+<span class="number">3577</span>          *
+<span class="number">3578</span>          * Also, during early boot <span class="keyword">the</span> idle thread <span class="keyword">is</span> <span class="keyword">in</span> <span class="keyword">the</span> fair <span class="type">class</span>,
+<span class="number">3579</span>          * <span class="keyword">for</span> obvious reasons <span class="keyword">its</span> a bad idea <span class="keyword">to</span> schedule <span class="keyword">back</span> <span class="keyword">to</span> <span class="keyword">it</span>.
+<span class="number">3580</span>          */
+<span class="number">3581</span>         <span class="keyword">if</span> (unlikely(!se-&gt;on_rq || curr == rq-&gt;idle))
+<span class="number">3582</span>                 <span class="constant">return</span>;
+<span class="number">3583</span> 
+<span class="number">3584</span>         <span class="keyword">if</span> (sched_feat(LAST_BUDDY) &amp;&amp; scale &amp;&amp; entity_is_task(se))
+<span class="number">3585</span>                 set_last_buddy(se);
+<span class="number">3586</span> }</code></pre>
+<h5>task_fork_fair()</h5>
+<pre><code class="lang-.c"><span class="number">5733</span> static void task_fork_fair(struct task_struct <span class="variable">*p</span>)
+<span class="number">5734</span> {
+<span class="number">5735</span>         struct cfs_rq <span class="variable">*cfs_rq</span>;
+<span class="number">5736</span>         struct sched_entity <span class="variable">*se</span> = &amp;p-&gt;se, <span class="variable">*curr</span>;
+<span class="number">5737</span>         <span class="keyword">int</span> this_cpu = smp_processor_id();
+<span class="number">5738</span>         struct rq <span class="variable">*rq</span> = this_r<span class="string">q()</span>;
+<span class="number">5739</span>         unsigned long flags;
+<span class="number">5740</span> 
+<span class="number">5741</span>         raw_spin_lock_irqsave(&amp;rq-&gt;lock, flags);
+<span class="number">5742</span> 
+<span class="number">5743</span>         update_rq_clock(rq);
+<span class="number">5744</span> 
+<span class="number">5745</span>         cfs_rq = task_cfs_r<span class="string">q(current)</span>;
+<span class="number">5746</span>         curr = cfs_rq-&gt;curr;
+<span class="number">5747</span> 
+<span class="number">5748</span>         <span class="keyword">if</span> (unlikely(task_cpu(p) != this_cpu)) {
+<span class="number">5749</span>                 rcu_read_lock();
+<span class="number">5750</span>                 __set_task_cpu(p, this_cpu);
+<span class="number">5751</span>                 rcu_read_unlock();
+<span class="number">5752</span>         }
+<span class="number">5753</span> 
+<span class="number">5754</span>         update_curr(cfs_rq);                     <span class="regexp">//</span> 更新当前进程的、队列的一些信息(如vruntime)
+<span class="number">5755</span> 
+<span class="number">5756</span>         <span class="keyword">if</span> (curr)                                /<span class="regexp">/ curr是父进程
+5757                 se-&gt;vruntime = curr-&gt;vruntime;
+5758         place_entity(cfs_rq, se, 1);
+5759 
+5760         if (sysctl_sched_child_runs_first &amp;&amp; curr &amp;&amp; entity_before(curr, se)) {
+5761                 /</span>*
+<span class="number">5762</span>                  * Upon rescheduling, sched_class::put_prev_task() will place
+<span class="number">5763</span>                  * <span class="string">'current'</span> within the tree based on its new key value.
+<span class="number">5764</span>                  <span class="variable">*/</span>
+<span class="number">5765</span>                 swap(curr-&gt;vruntime, se-&gt;vruntime);
+<span class="number">5766</span>                 resched_task(rq-&gt;curr);          <span class="regexp">//</span> 置位，标志需要重新调度
+<span class="number">5767</span>         }
+<span class="number">5768</span> 
+<span class="number">5769</span>         se-&gt;vruntime -= cfs_rq-&gt;min_vruntime;
+<span class="number">5770</span> 
+<span class="number">5771</span>         raw_spin_unlock_irqrestore(&amp;rq-&gt;lock, flags);
+<span class="number">5772</span> }</code></pre>
+<h5>task_tick_fair()</h5>
+<pre><code class="lang-.c"><span class="number">5712</span> <span class="keyword">static</span> <span class="keyword">void</span> task_tick_fair(<span class="keyword">struct</span> rq *rq, <span class="keyword">struct</span> task_struct *curr, <span class="keyword">int</span> queued)
+<span class="number">5713</span> {
+<span class="number">5714</span>         <span class="keyword">struct</span> cfs_rq *cfs_rq;
+<span class="number">5715</span>         <span class="keyword">struct</span> sched_entity *se = &amp;curr-&gt;se;
+<span class="number">5716</span> 
+<span class="number">5717</span>         for_each_sched_entity(se) {
+<span class="number">5718</span>                 cfs_rq = cfs_rq_of(se);
+<span class="number">5719</span>                 entity_tick(cfs_rq, se, queued);           <span class="comment">// entity 完成每个进程时间更新</span>
+<span class="number">5720</span>         }
+<span class="number">5721</span> 
+<span class="number">5722</span>         <span class="keyword">if</span> (sched_feat_numa(NUMA))
+<span class="number">5723</span>                 task_tick_numa(rq, curr);
+<span class="number">5724</span> 
+<span class="number">5725</span>         update_rq_runnable_avg(rq, <span class="number">1</span>);
+<span class="number">5726</span> }</code></pre>
+<pre><code class="lang-.c"><span class="number">1953</span> entity_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr, int queued)
+<span class="number">1954</span> {
+<span class="number">1955</span>         /*
+<span class="number">1956</span>          * Update run-time statistics of the <span class="string">'current'</span>.
+<span class="number">1957</span>          */
+<span class="number">1958</span>         update_curr(cfs_rq);
+<span class="number">1959</span> 
+<span class="number">1960</span>         /*
+<span class="number">1961</span>          * Ensure that runnable average is periodically updated.
+<span class="number">1962</span>          */
+<span class="number">1963</span>         update_entity_load_avg(curr, <span class="number">1</span>);
+<span class="number">1964</span>         update_cfs_rq_blocked_load(cfs_rq, <span class="number">1</span>);
+        <span class="keyword">...</span>
+<span class="number">1983</span>         <span class="keyword">if</span> (cfs_rq-&gt;nr_running &gt; <span class="number">1</span>)                        // 一个进程超过了它本该执行的时间，则调度换出
+<span class="number">1984</span>                 check_preempt_tick(cfs_rq, curr);
+<span class="number">1985</span> }</code></pre>
+<h5>check_preempt_tick()</h5>
+<pre><code class="lang-.c"><span class="number">1819</span> check_preempt_tick(struct cfs_rq <span class="variable">*cfs_rq</span>, struct sched_entity <span class="variable">*curr</span>)
+<span class="number">1820</span> {
+<span class="number">1821</span>         unsigned long ideal_runtime, delta_exec;
+<span class="number">1822</span>         struct sched_entity <span class="variable">*se</span>;
+<span class="number">1823</span>         s64 delta;
+<span class="number">1824</span> 
+<span class="number">1825</span>         ideal_runtime = sched_slice(cfs_rq, curr);
+<span class="number">1826</span>         delta_exec = curr-&gt;sum_exec_runtime - curr-&gt;prev_sum_exec_runtime;
+<span class="number">1827</span>         <span class="keyword">if</span> (delta_exec &gt; ideal_runtime) {
+<span class="number">1828</span>                 resched_task(rq_of(cfs_rq)-&gt;curr);
+<span class="number">1829</span>                 /*
+<span class="number">1830</span>                  * The current task ran long enough, ensure it doesn<span class="string">'t get
+1831                  * re-elected due to buddy favours.
+1832                  */
+1833                 clear_buddies(cfs_rq, curr);
+1834                 return;
+1835         }
+1836 
+1837         /*
+1838          * Ensure that a task that missed wakeup preemption by a
+1839          * narrow margin doesn'</span>t have to <span class="keyword">wait</span> <span class="keyword">for</span> a full slice.
+<span class="number">1840</span>          * This also mitigates buddy induced latencies under load.
+<span class="number">1841</span>          <span class="variable">*/</span>
+<span class="number">1842</span>         <span class="keyword">if</span> (delta_exec &lt; sysctl_sched_min_granularity)
+<span class="number">1843</span>                 <span class="keyword">return</span>;
+<span class="number">1844</span> 
+<span class="number">1845</span>         se = __pick_first_entity(cfs_rq);
+<span class="number">1846</span>         delta = curr-&gt;vruntime - se-&gt;vruntime;
+<span class="number">1847</span> 
+<span class="number">1848</span>         <span class="keyword">if</span> (delta &lt; <span class="number">0</span>)
+<span class="number">1849</span>                 <span class="keyword">return</span>;
+<span class="number">1850</span> 
+<span class="number">1851</span>         <span class="keyword">if</span> (delta &gt; ideal_runtime)
+<span class="number">1852</span>                 resched_task(rq_of(cfs_rq)-&gt;curr);
+<span class="number">1853</span> }</code></pre>
+<h3>调度触发</h3>
+<ul>
+<li>新建进程触发调度 <code>task_fork()</code> =&gt; <code>task_fork_fair()</code> /proc/sys/kernel/sched_child_runs_first</li>
+<li>周期性触发调度 <code>task_tick()</code> =&gt; <code>task_tick_fair()</code></li>
+<li>唤醒抢占触发调度 <code>check_preempt_wakeup()</code> =&gt; <code>check_preempt_wakeup()</code> /proc/sys/kernel/sched_min_granularity_ns</li>
+</ul>
+<h5>新建进程触发调度</h5>
+<p>在Linux中，POSXI的系统调用<code>fork()</code>,<code>vfork()</code>和<code>clone()</code>最终通过<code>do_fork()</code>来实现。</p>
+<pre><code class="lang-.c">// kernel/fork.c
+<span class="number">1558</span> long do_fork(unsigned long clone_flags,
+<span class="number">1559</span>               unsigned long stack_start,
+<span class="number">1560</span>               unsigned long stack_size,
+<span class="number">1561</span>               int __user *parent_tidptr,
+<span class="number">1562</span>               int __user *child_tidptr)
+<span class="number">1563</span> {
+        <span class="keyword">...</span>
+<span class="number">1595</span>         p = copy_process(clone_flags, stack_start, stack_size,    // =&gt; task_fork()
+<span class="number">1596</span>                          child_tidptr, <span class="literal">NULL</span>, trace);
+        <span class="keyword">...</span>
+<span class="number">1617</span>                 wake_up_new_task(p);                              // =&gt; check_preempt_wakeup()
+        <span class="keyword">...</span>
+<span class="number">1631</span> }</code></pre>
+<pre><code class="lang-.c"><span class="number">1123</span> /*
+<span class="number">1124</span>  * This creates a new process as a copy of the old one,
+<span class="number">1125</span>  * but does not actually start it yet.
+<span class="number">1126</span>  *
+<span class="number">1127</span>  * It copies the registers, and all the appropriate
+<span class="number">1128</span>  * parts of the process environment (as per the clone
+<span class="number">1129</span>  * flags). The actual kick-off is left to the caller.
+<span class="number">1130</span>  */
+<span class="number">1131</span> static struct task_struct *copy_process(unsigned long clone_flags,
+<span class="number">1132</span>                                         unsigned long stack_start,
+<span class="number">1133</span>                                         unsigned long stack_size,
+<span class="number">1134</span>                                         int __user *child_tidptr,
+<span class="number">1135</span>                                         struct pid *pid,
+<span class="number">1136</span>                                         int trace)
+<span class="number">1137</span> {
+        <span class="keyword">...</span>
+<span class="number">1308</span>         sched_fork(p);
+        <span class="keyword">...</span>
+<span class="number">1528</span> }</code></pre>
+<pre><code class="lang-.c"><span class="number">1619</span> /*
+<span class="number">1620</span>  * fork()/clone()-time setup:
+<span class="number">1621</span>  */
+<span class="number">1622</span> void sched_fork(struct task_struct *p)
+<span class="number">1623</span> {
+        <span class="keyword">...</span>
+<span class="number">1664</span>         <span class="keyword">if</span> (p-&gt;sched_class-&gt;task_fork)
+<span class="number">1665</span>                 p-&gt;sched_class-&gt;task_fork(p);      // 调用当前进程的调度类的task_fork()，CFS为task_fork_fair()
+        <span class="keyword">...</span>
+<span class="number">1694</span> }</code></pre>
+<h3>周期性触发调度</h3>
+<p>每次time interrupt产生时，系统的time interrupt handler函数<code>tick_periodic()</code>会调用<code>update_process_times()</code>更新进程vruntime，
+设设置<code>need_resched</code>，平衡调度队列。
+x86系统默认的time interrupt周期是10ms(100HZ)。</p>
+<pre><code class="lang-.c"><span class="number">1342</span> /*
+<span class="number">1343</span>  * Called from the timer interrupt handler to charge one tick to the current
+<span class="number">1344</span>  * process.  user_tick is <span class="number">1</span> <span class="keyword">if</span> the tick is user <span class="keyword">time</span>, <span class="number">0</span> <span class="keyword">for</span> <span class="keyword">system</span>.
+<span class="number">1345</span>  <span class="variable">*/</span>
+<span class="number">1346</span> void update_process_times(<span class="keyword">int</span> user_tick)
+<span class="number">1347</span> {
+<span class="number">1348</span>         struct task_struct <span class="variable">*p</span> = current;
+<span class="number">1349</span>         <span class="keyword">int</span> cpu = smp_processor_id();
+<span class="number">1350</span> 
+<span class="number">1351</span>         /* Note: this timer irq context must be accounted <span class="keyword">for</span> as well. <span class="variable">*/</span>
+<span class="number">1352</span>         account_process_tick(p, user_tick);
+<span class="number">1353</span>         run_local_timers();
+<span class="number">1354</span>         rcu_check_callbacks(cpu, user_tick);
+<span class="number">1355</span> <span class="comment">#ifdef CONFIG_IRQ_WORK</span>
+<span class="number">1356</span>         <span class="keyword">if</span> (in_ir<span class="string">q()</span>)
+<span class="number">1357</span>                 irq_work_run();
+<span class="number">1358</span> <span class="comment">#endif</span>
+<span class="number">1359</span>         scheduler_tick();                       <span class="regexp">//</span> HERE!
+<span class="number">1360</span>         run_posix_cpu_timers(p);
+<span class="number">1361</span> }</code></pre>
+<pre><code class="lang-.c"><span class="number">2684</span> void scheduler_tick(void)
+<span class="number">2685</span> {
+<span class="number">2686</span>         <span class="keyword">int</span> cpu = smp_processor_id();
+<span class="number">2687</span>         struct rq <span class="variable">*rq</span> = cpu_r<span class="string">q(cpu)</span>;
+<span class="number">2688</span>         struct task_struct <span class="variable">*curr</span> = rq-&gt;curr;
+<span class="number">2689</span> 
+<span class="number">2690</span>         sched_clock_tick();
+<span class="number">2691</span> 
+<span class="number">2692</span>         raw_spin_lock(&amp;rq-&gt;lock);
+<span class="number">2693</span>         update_rq_clock(rq);
+<span class="number">2694</span>         update_cpu_load_active(rq);
+<span class="number">2695</span>         curr-&gt;sched_class-&gt;task_tick(rq, curr, <span class="number">0</span>);           <span class="regexp">//</span> 调用当前进程的调度类的task_tick()，CFS为task_tick_fair()
+<span class="number">2696</span>         raw_spin_unlock(&amp;rq-&gt;lock);
+<span class="number">2697</span> 
+<span class="number">2698</span>         perf_event_task_tick();
+             ...
+<span class="number">2704</span> }</code></pre>
+<h3>唤醒抢占触发调度</h3>
+<pre><code class="lang-.c">// kernel/sched/core.c
+<span class="number">1703</span> void wake_up_new_task(struct task_struct *p)
+<span class="number">1704</span> {
+<span class="number">1705</span>         unsigned long flags;
+<span class="number">1706</span>         struct rq *rq;
+<span class="number">1707</span> 
+<span class="number">1708</span>         raw_spin_lock_irqsave(&amp;p-&gt;pi_lock, flags);
+        <span class="keyword">...</span>
+<span class="number">1717</span> 
+<span class="number">1718</span>         rq = __task_rq_lock(p);
+<span class="number">1719</span>         activate_task(rq, p, <span class="number">0</span>);
+<span class="number">1720</span>         p-&gt;on_rq = <span class="number">1</span>;
+<span class="number">1721</span>         trace_sched_wakeup_new(p, true);
+<span class="number">1722</span>         check_preempt_curr(rq, p, WF_FORK);     // check_preempt_curr()
+        <span class="keyword">...</span>
+<span class="number">1727</span>         task_rq_unlock(rq, p, &amp;flags);
+<span class="number">1728</span> }</code></pre>
+<p><code>check_preempt_curr()</code>会在多处被调用：</p>
+<pre><code class="lang-.c"> <span class="number">909</span> void check_preempt_curr(struct rq <span class="variable">*rq</span>, struct task_struct <span class="variable">*p</span>, <span class="keyword">int</span> flags)
+ <span class="number">910</span> {
+ <span class="number">911</span>         const struct sched_class <span class="variable">*class</span>;
+ <span class="number">912</span> 
+ <span class="number">913</span>         <span class="keyword">if</span> (p-&gt;sched_class == rq-&gt;curr-&gt;sched_class) {
+ <span class="number">914</span>                 rq-&gt;curr-&gt;sched_class-&gt;check_preempt_curr(rq, p, flags);    <span class="regexp">//</span> 调度调度器的check_preempt_curr()
+ <span class="number">915</span>         } <span class="keyword">else</span> {
+ <span class="number">916</span>                 for_each_class(class) {
+ <span class="number">917</span>                         <span class="keyword">if</span> (class == rq-&gt;curr-&gt;sched_class)
+ <span class="number">918</span>                                 <span class="keyword">break</span>;
+ <span class="number">919</span>                         <span class="keyword">if</span> (class == p-&gt;sched_class) {
+ <span class="number">920</span>                                 resched_task(rq-&gt;curr);
+ <span class="number">921</span>                                 <span class="keyword">break</span>;
+ <span class="number">922</span>                         }
+ <span class="number">923</span>                 }
+ <span class="number">924</span>         }
+             ...
+ <span class="number">932</span> }
+ <span class="number">933</span></code></pre>
+<h3>Reference</h3>
+<ul>
+<li><a href="http://www.ibm.com/developerworks/linux/library/l-completely-fair-scheduler/index.html" target="_blank">Inside the Linux 2.6 Completely Fair Scheduler</a></li>
+<li><a href="http://stackoverflow.com/questions/12708407/scheduler-tick-from-where-is-this-called-in-linux" target="_blank">scheduler_tick - from where is this called in Linux?</a></li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

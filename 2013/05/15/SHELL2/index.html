@@ -1,0 +1,430 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Learn Shell 2 | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="Tips
+
+sh means /bin/sh command, equal with /bin/bash in almost Linux
+. equal with source command
+
+
+&quot; 阻止解释大部分特殊字符，$,`,\除外
+&amp;#39; 阻止解释全部特殊字符
+: Shell">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Learn Shell 2"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-05-14T16:00:00.000Z"><a href="/2013/05/15/SHELL2/">May 15 2013</a></time>
+      
+      
+  
+    <h1 class="title">Learn Shell 2</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <h3>Tips</h3>
+<ul>
+<li><code>sh</code> means <code>/bin/sh</code> command, equal with <code>/bin/bash</code> in almost Linux</li>
+<li><code>.</code> equal with <code>source</code> command</li>
+</ul>
+<ul>
+<li><code>&quot;</code> 阻止解释大部分特殊字符，$,`,\除外</li>
+<li><code>&#39;</code> 阻止解释全部特殊字符</li>
+<li><code>:</code> Shell空命令, no op, 等价Shell内的true。也可用来执行非活动任务的shell命令，如<code>: ${VAR:=&quot;some default&quot;}</code></li>
+<li><code>()</code><ul>
+<li>命令组，启动子Shell执行。子Shell中的变量时局部的。</li>
+<li>数组，如<code>array=(1 2 3)</code></li>
+</ul>
+</li>
+<li><code>{}</code><ul>
+<li>括号扩展，扩展<code>{}</code>两边空格之间的部分，如<code>a{b,c,d}e</code>=&gt;<code>abe ace ade</code></li>
+<li>代码块, 等价于创建匿名函数，但是其中变量作用域是全局。可将代码块的结果进行I/O重定向。</li>
+</ul>
+</li>
+<li>echo 打开“-e”选项，在输出的字符串中打开转义，格式化输出</li>
+<li>egrep 扩展正则表达式，等价<code>grep -E</code></li>
+</ul>
+<h3>Function Library</h3>
+<p>Define functions in non-runable file(functions.sh):</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class="code"><pre><span class="shebang">#!/bin/echo Warning: this library should not be sourced!</span>
+ostype ()
+{
+	osname=<span class="string">`uname -s`</span>
+	OSTYPE=UNKNOWN
+	<span class="keyword">case</span> $osname <span class="keyword">in</span>
+		<span class="string">"FreeBSD"</span>) OSTYPE=FREEBSD
+			;;
+		<span class="string">"SunOS"</span>) OSTYPE=<span class="string">"SOLARIS"</span>
+			;;
+		<span class="string">"Linux"</span>) OSTYPE=<span class="string">"LINUX"</span>
+			;;
+	esac
+	<span class="keyword">return</span> <span class="number">0</span>
+}
+</pre></td></tr></table></figure>
+
+<p>and in user script:</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+</pre></td><td class="code"><pre><span class="keyword">source</span> functions.sh    <span class="comment"># or . functions.sh</span>
+<span class="keyword">...</span>
+</pre></td></tr></table></figure>
+
+<h3>Arrays</h3>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre><span class="keyword">declare</span> -a ARY1=(`ls -l`)
+<span class="keyword">declare</span> -a ARY2=(aa bb cc)
+
+<span class="keyword">echo</span> <span class="variable">${ARY1[0]}</span>
+<span class="keyword">echo</span> <span class="variable">${ARY2[1]}</span>
+
+<span class="keyword">echo</span> <span class="variable">${ARY1[@]}</span>      <span class="comment"># all items in array</span>
+ehco <span class="variable">${#ARY1[*]}</span>     <span class="comment"># array length</span>
+</pre></td></tr></table></figure>
+
+<h3>条件判断</h3>
+<ul>
+<li><code>[]</code> 和 <code>test</code>等价, <code>[</code>是shell内建命令或<code>/usr/bin/[</code>, <code>]</code>表示比较完成。<ul>
+<li>条件测试</li>
+<li>数组元素</li>
+</ul>
+</li>
+<li><code>[[]]</code><ul>
+<li>测试，比<code>[]</code>更加通用</li>
+</ul>
+</li>
+</ul>
+<p>比较：</p>
+<p>| 字符串 | =  | !=  | &gt;   | &gt;=  | &lt;   | &lt;=  | -z | -n |
+| 数字  | -eq | -ne | -gt | -ge | -lt | -le |</p>
+<ul>
+<li><code>&amp;&amp;</code>等价<code>-a</code></li>
+<li><code>||</code>等价<code>-o</code></li>
+</ul>
+<p>例子：</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre>ZERO=0
+<span class="keyword">if</span> <span class="test_condition">[ <span class="variable">$ZERO</span> -eq 0 ]</span>;<span class="keyword">then</span> <span class="keyword">echo</span> <span class="variable">$ZERO</span>;<span class="keyword">fi</span>
+<span class="keyword">if</span> test <span class="variable">$ZERO</span> -eq 0;<span class="keyword">then</span> <span class="keyword">echo</span> <span class="variable">$ZERO</span>;<span class="keyword">fi</span>
+test <span class="variable">$ZERO</span> -eq 0 && <span class="keyword">echo</span> <span class="variable">$ZERO</span>    <span class="comment"># if return true</span>
+test <span class="variable">$ZERO</span> -eq 0 || <span class="keyword">echo</span> <span class="variable">$ZERO</span>    <span class="comment"># if return false</span>
+<span class="test_condition">[ <span class="variable">$ZERO</span> -eq 0] && {
+  echo <span class="variable">$ZERO</span>      # if return <span class="literal">true</span>
+}
+</pre></td></tr></table></figure>
+
+<h3>getopts</h3>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+</pre></td><td class="code"><pre>OPTINT=<span class="number">1</span>
+<span class="keyword">while</span> getopts lf:h ARGS; do
+	case $ARGS <span class="keyword">in</span>
+		l)
+			<span class="keyword">...</span>
+			;;
+		f)
+			FILE=$OPTARG   <span class="comment"># 如果选项后跟着冒号，表示选项后跟的是参数</span>
+			<span class="keyword">...</span>
+			;;
+		h)
+			<span class="keyword">...</span>
+			;;
+		*)
+			usage
+			;;
+	esac
+done
+</pre></td></tr></table></figure>
+
+<h3>noclobber</h3>
+<p>The setting shell parameter <code>set -o noclobber</code> (bash, ksh) will prevent &gt; from clobbering by making it issue an error message instead:</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre>echo <span class="string">"Hello, world"</span> &gt;<span class="type">file</span>.txt
+echo <span class="string">"This will overwrite the first greeting."</span> &gt;<span class="type">file</span>.txt
+<span class="keyword">set</span> -o noclobber
+echo <span class="string">"Can we overwrite it again?"</span> &gt;<span class="type">file</span>.txt
+-bash: <span class="type">file</span>.txt: cannot overwrite existing <span class="type">file</span>
+echo <span class="string">"But we can use the &gt;| operator to ignore the noclobber."</span> &gt;|<span class="type">file</span>.txt
+<span class="comment"># Successfully overwrote the contents of file.txt using the &gt;| operator</span>
+<span class="keyword">set</span> +o noclobber <span class="comment"># Changes setting back</span>
+</pre></td></tr></table></figure>
+
+<h3>文件句柄</h3>
+<ul>
+<li><code>-</code> 重定向<code>stdio</code>或<code>stdout</code></li>
+</ul>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre><span class="comment"># 3~9  </span>
+<span class="keyword">exec</span> <span class="number">3</span>&lt; file1    <span class="comment"># 读模式</span>
+<span class="keyword">exec</span> <span class="number">4</span>&gt; file2    <span class="comment"># 覆盖写模式</span>
+<span class="keyword">exec</span> <span class="number">5</span>&gt;&gt; file3   <span class="comment"># 追加写模式</span>
+<span class="keyword">exec</span> <span class="number">6</span>&lt;&gt; file4   <span class="comment"># 读写模式</span>
+
+<span class="keyword">read</span> line &lt;&<span class="number">3</span>
+echo <span class="string">"123"</span> &gt;&<span class="number">4</span>
+
+<span class="keyword">exec</span> <span class="number">3</span>&gt;&-        <span class="comment"># 关闭文件描述符</span>
+</pre></td></tr></table></figure>
+
+<h3>数学计算</h3>
+<ol>
+<li>expr</li>
+</ol>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+</pre></td><td class="code"><pre>ans=`expr <span class="variable">$a</span> + <span class="variable">$b</span>`
+ans=`expr <span class="variable">$a</span> - <span class="variable">$b</span>`
+ans=`expr <span class="variable">$a</span> \* <span class="variable">$b</span>`
+ans=`expr <span class="variable">$a</span> / <span class="variable">$b</span>`
+ans=`expr <span class="variable">$a</span> % <span class="variable">$b</span>`
+</pre></td></tr></table></figure>
+
+<ol>
+<li>shell内置(bash,ksh)</li>
+</ol>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre>ans=<span class="variable">$(</span>(<span class="variable">$a</span>+<span class="variable">$b</span>))
+ans=<span class="variable">$(</span>(<span class="variable">$a</span>-<span class="variable">$b</span>))
+ans=<span class="variable">$(</span>(<span class="variable">$a</span><span class="variable">*$</span>b))
+ans=<span class="variable">$(</span>(<span class="variable">$a</span>/<span class="variable">$b</span>))
+ans=<span class="variable">$(</span>(<span class="variable">$a</span><span class="variable">%$</span>b))
+ans=<span class="variable">$(</span>(<span class="variable">$a</span><span class="variable">**</span><span class="variable">$b</span>)  <span class="comment"># 指数运算</span>
+</pre></td></tr></table></figure>
+
+<ol>
+<li>bc</li>
+</ol>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="code"><pre>ans=`<span class="keyword">echo</span> <span class="string">"<span class="variable">$a</span>+<span class="variable">$b</span>"</span>|bc`
+ans=`<span class="keyword">echo</span> <span class="string">"<span class="variable">$a</span>-<span class="variable">$b</span>"</span>|bc`
+ans=`<span class="keyword">echo</span> <span class="string">"<span class="variable">$a</span>*<span class="variable">$b</span>"</span>|bc`
+ans=`<span class="keyword">echo</span> <span class="string">"<span class="variable">$a</span>/<span class="variable">$b</span>"</span>|bc`
+ans=`<span class="keyword">echo</span> <span class="string">"<span class="variable">$a</span>%<span class="variable">$b</span>"</span>|bc`
+ans=`<span class="keyword">echo</span> <span class="string">"<span class="variable">$a</span>^<span class="variable">$b</span>"</span>|bc`          <span class="comment"># 指数运算</span>
+ans=`<span class="keyword">echo</span> <span class="string">"scale=5;<span class="variable">$a</span>/<span class="variable">$b</span>"</span>|bc`  <span class="comment"># 精度为5的运算，结果为小数</span>
+ans=`<span class="keyword">echo</span> <span class="string">"scale=5;s(<span class="variable">$a</span>)"</span>|bc -l`  <span class="comment"># 调用sin函数</span>
+</pre></td></tr></table></figure>
+
+<h3>advanced commands</h3>
+<ul>
+<li>cut 列字符串、字节、域的选择</li>
+<li>sed 查找替换</li>
+<li>awk （条件）列选择</li>
+<li>expect 自动输入交互数据</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Shell/">Shell</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

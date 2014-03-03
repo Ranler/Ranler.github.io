@@ -1,0 +1,229 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Smart Pointer and MultiThread in CPP | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="Smart Pointer
+智能指针用于管理heap上对象的生命周期。
+
+std::auto_ptr: ptr:对象=1:1, ptr引用的对象可以转移（通过拷贝或赋值）(C++11已被废弃，使用std::unique_ptr代替)。
+boost::scoped_ptr: ptr:对象=1:1, p">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Smart Pointer and MultiThread in CPP"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-06-30T16:00:00.000Z"><a href="/2013/07/01/smart-point-and-multithread/">Jul 1 2013</a></time>
+      
+      
+  
+    <h1 class="title">Smart Pointer and MultiThread in CPP</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <h3>Smart Pointer</h3>
+<p>智能指针用于管理heap上对象的生命周期。</p>
+<ul>
+<li><code>std::auto_ptr</code>: ptr:对象=1:1, ptr引用的对象可以转移（通过拷贝或赋值）(C++11已被废弃，使用<code>std::unique_ptr</code>代替)。</li>
+<li><code>boost::scoped_ptr</code>: ptr:对象=1:1, ptr引用的对象不可转移。</li>
+<li><code>boost::shared_ptr</code>: ptr:对象=N:1, 内置引用计数器。无法解决循环引用。</li>
+<li><code>boost::weak_ptr</code>: ptr:对象=N:1, 可以手工解决循环引用。</li>
+</ul>
+<p>后三个在<code>std::tr1</code>中也提供。</p>
+<p><code>weak_ptr</code>只能通过<code>shared_ptr</code>或<code>weak_ptr</code>创建，因此其必须对应一个<code>shared_ptr</code>，但是不会增加<code>shared_ptr</code>的引用计数，因此是一个弱引用。<code>weak_ptr</code>通过<strong>提升/lock()</strong>获得对应的<code>shared_ptr</code>。如果对象已释放，则返回空的<code>shared_ptr</code>。</p>
+<p><code>shared_ptr</code>避免循环引用通常的做法是：如果是</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre>        <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="comment">(shared_ptr)</span>-<span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>&gt;
+<span class="comment">owner</span>                          <span class="comment">child</span>
+        &lt;<span class="literal">-</span><span class="literal">-</span><span class="comment">(shared_ptr)</span>-<span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>
+</pre></td></tr></table></figure>
+
+<p>的情况，则设计成：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre>        <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="comment">(shared_ptr)</span>-<span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>&gt;
+<span class="comment">owner</span>                           <span class="comment">child</span>
+        &lt;<span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="comment">(weak_ptr)</span>-<span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>
+</pre></td></tr></table></figure>
+
+<h3>MultiThread</h3>
+<h5>shared_ptr</h5>
+<figure class="highlight lang-.cpp"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="code"><pre>template&lt;class <span class="literal">T</span>&gt; class shared_ptr
+{
+<span class="keyword">...</span>
+private:
+    <span class="literal">T</span> * px;                     // contained pointer
+    detail::shared_count pn;    // reference counter
+}
+</pre></td></tr></table></figure>
+
+<p><code>shared_ptr</code>有两个数据成员，pn是引用计数器。
+<code>shared_ptr</code>的计数操作是安全且无锁的原子操作。
+因此在多线程中通过拷贝或赋值操作创建新的<code>shared_ptr</code>对象是安全的，能够正确记录引用的值。</p>
+<figure class="highlight lang-.cpp"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+</pre></td><td class="code"><pre><span class="comment">// thread A</span>
+<span class="built_in">shared_ptr</span>&lt;<span class="keyword">int</span>&gt; p2(p); <span class="comment">// reads p</span>
+
+<span class="comment">// thread B</span>
+<span class="built_in">shared_ptr</span>&lt;<span class="keyword">int</span>&gt; p3(p); <span class="comment">// read p, OK, multiple reads are safe</span>
+</pre></td></tr></table></figure>
+
+<p>上面代码读取了同一个<code>shared_ptr</code>对象，结果是正确的。
+但是同一个<code>shared_ptr</code>被多个线程写入时，结果就未定义了（因为有两个成员，pn并不是执行计数操作，而是被赋值），这时就需要加锁。
+<code>shared_ptr</code>对象的析构也算写入操作。</p>
+<h3>Reference</h3>
+<ul>
+<li>Linux多线程服务端编程</li>
+<li><a href="http://www.boost.org/doc/libs/1_53_0/libs/smart_ptr/shared_ptr.htm#ThreadSafety" target="_blank">http://www.boost.org/doc/libs/1_53_0/libs/smart_ptr/shared_ptr.htm#ThreadSafety</a></li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/C&CPP/">C&CPP</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

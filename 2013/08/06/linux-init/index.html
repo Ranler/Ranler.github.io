@@ -1,0 +1,279 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Linux Init | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="init读取与系统有关的初始化文件，并将系统引导到一个状态。
+init是普通的用户进程，以root权限运行。
+init进程能够成为所有孤儿进程的父进程。
+现在流行的两种init：
+
+SysVinit
+Systemd
+
+终端登录和网络登录
+
+终端登录过程
+
+init进程读文件/etc/ttys，针对每">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Linux Init"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-08-05T16:00:00.000Z"><a href="/2013/08/06/linux-init/">Aug 6 2013</a></time>
+      
+      
+  
+    <h1 class="title">Linux Init</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>init读取与系统有关的初始化文件，并将系统引导到一个状态。
+init是普通的用户进程，以root权限运行。
+init进程能够成为所有孤儿进程的父进程。</p>
+<p>现在流行的两种init：</p>
+<ul>
+<li>SysVinit</li>
+<li>Systemd</li>
+</ul>
+<h3>终端登录和网络登录</h3>
+<ol>
+<li>终端登录过程</li>
+</ol>
+<p>init进程读文件<code>/etc/ttys</code>，针对每一个可登陆的<strong>终端设备</strong>（有限）<code>fork</code>一个子进程，
+然后子进程<code>exec getty</code>。getty程序open终端设备阻塞等待用户登录，读取用户输入的用户名，
+作为参数传给<code>exec login</code>程序继续读入用户密码，
+等待验证成功后，设置用户权限和环境变量，启动shell。</p>
+<ol>
+<li>网络登录过程</li>
+</ol>
+<p>init继承读取<code>/etc/rc</code>启动系统daemon，比如sshd。
+sshd等待TCP/IP请求，然后针对每个请求打开一个<strong>伪终端设备</strong>，并<code>fork</code>一个子进程执行<code>exec login</code>进行登录。等待验证成功后，设置用户权限和环境变量，启动shell。</p>
+<p>需要注意的是，shell的标准输入，标准输出和标准错误会连接到一个终端设备或伪终端设备上。</p>
+<h3>SysVinit</h3>
+<p>SysVinit是比传统的init，现在在Redhat,Debian上还在使用着。
+其中init的程序为：</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+</pre></td><td class="code"><pre><span class="blockquote">&gt; which init</span>
+/sbin/init
+<span class="blockquote">&gt; file /sbin/init</span>
+/sbin/init: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), for GNU/Linux 2.6.9, dynamically linked (uses shared libs), stripped
+<span class="code">```</span>
+
+
+相关配置文件：
+
+<span class="code">```</span> sh
+/etc/inittab           // check run level
+/etc/rc<span class="emphasis">*.d/*</span>           // run level script
+/etc/init.d/*          // daemon
+<span class="code">```</span>
+
+<span class="header">### Systemd</span>
+
+Systemd是新式的init，兼容SysVinit，在Arch和Fedora上开始使用。
+其init程序就软链接到systemd程序：
+
+<span class="code">```</span> sh
+<span class="blockquote">&gt; file -l /sbin/init</span>
+/sbin/init: symbolic link to `../usr/lib/systemd/systemd' 
+<span class="code">```</span>
+
+相关配置文件：
+
+<span class="code">```</span> sh
+/etc/systemd/*
+<span class="code">```</span>
+
+
+
+SysVinit和Systemd的命令对比：<span class="link_label">[SysVinit to Systemd Cheatsheet]</span>(<span class="link_url">http://fedoraproject.org/wiki/SysVinit_to_Systemd_Cheatsheet</span>)
+
+<span class="header">### Init in Solaris</span>
+
+<span class="code">```</span> sh
+<span class="blockquote">&gt; which init</span>
+/usr/sbin/init
+<span class="blockquote">&gt; file /usr/sbin/init </span>
+/usr/sbin/init: ELF 32-bit MSB executable SPARC Version 1, dynamically linked, stripped
+</pre></td></tr></table></figure>
+
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

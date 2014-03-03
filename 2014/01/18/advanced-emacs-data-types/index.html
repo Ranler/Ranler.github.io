@@ -1,0 +1,558 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Advanced Emacs (1): ELisp Data Types | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="Emacs用了也有三四年了，但是感觉自己还没有到达中级水平。
+这是因为我只是用了Emacs这个工具，只是掌握了一些trick，添加和修改了一些插件，
+但没有去理解Emacs的运行机制，也没有很系统的学习ELisp，
+所以渐渐感到驾驭不了各种各样不同风格的插件，也不能按照自己的想法去扩展。
+因此目前需">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Advanced Emacs (1): ELisp Data Types"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2014-01-18T05:48:47.000Z"><a href="/2014/01/18/advanced-emacs-data-types/">Jan 18 2014</a></time>
+      
+      
+  
+    <h1 class="title">Advanced Emacs (1): ELisp Data Types</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>Emacs用了也有三四年了，但是感觉自己还没有到达中级水平。
+这是因为我只是用了Emacs这个工具，只是掌握了一些trick，添加和修改了一些插件，
+但没有去理解Emacs的运行机制，也没有很系统的学习ELisp，
+所以渐渐感到驾驭不了各种各样不同风格的插件，也不能按照自己的想法去扩展。
+因此目前需要进阶一下，就先从ELisp入手。</p>
+<h3>测试环境</h3>
+<p>在Emacs中测试ELisp的环境是切换到<code>*scratch*</code>缓冲里，使用<code>lisp-interaction-mode</code>模式。
+输入下面语句，使用<code>C-j</code>或<code>C-x C-e</code>执行：</p>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+</pre></td><td class="code"><pre><span class="list">(<span class="title">message</span><span class="body"> <span class="string">"hello world"</span>)</span></span>
+</pre></td></tr></table></figure>
+
+<h3>1. 原子(atom)数据类型</h3>
+<hr>
+<p>在Lisp中,除了序对(cons cells，下节介绍)组成的类型之外的其它所有类型称为<strong>原子(atom)</strong>类型。
+以下是常见的原子类型：</p>
+<h3>1.1 数字 integer &amp; floating</h3>
+<p>数字包括整数(Integer, 30bits)，浮点数(Floating, double)。
+可以从<code>most-positive-fixnum</code>和<code>most-negative-fixnum</code>两个变量得到整数的围。
+<code>NaN</code>也表示特殊值。</p>
+<p>相关函数：</p>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+</pre></td><td class="code"><pre><span class="comment">;; 测试函数</span>
+<span class="list">(<span class="title">integerp</span><span class="body"> OBJECT)</span></span>
+<span class="list">(<span class="title">floatp</span><span class="body"> OBJECT)</span></span>
+<span class="list">(<span class="title">numberp</span><span class="body"> OBJECT)</span></span>
+<span class="list">(<span class="title">zerop</span><span class="body"> NUMBER)</span></span>
+<span class="list">(<span class="title">wholenump</span><span class="body"> OBJECT)</span></span>
+<span class="comment">;; 比较函数</span>
+<span class="list">(<span class="title">&gt;</span><span class="body"> NUM<span class="number">1</span> NUM<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">&lt;</span><span class="body"> NUM<span class="number">1</span> NUM<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">&gt;=</span><span class="body"> NUM<span class="number">1</span> NUM<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">&lt;=</span><span class="body"> NUM<span class="number">1</span> NUM<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">=</span><span class="body"> NUM<span class="number">1</span> NUM<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">eql</span><span class="body"> OBJ<span class="number">1</span> OBJ<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">/=</span><span class="body"> NUM<span class="number">1</span> NUM<span class="number">2</span>)</span></span>
+<span class="comment">;; 转换函数</span>
+<span class="list">(<span class="title">float</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">truncate</span><span class="body"> ARG <span class="keyword">&optional</span> DIVISOR)</span></span>
+<span class="list">(<span class="title">floor</span><span class="body"> ARG <span class="keyword">&optional</span> DIVISOR)</span></span>
+<span class="list">(<span class="title">ceiling</span><span class="body"> ARG <span class="keyword">&optional</span> DIVISOR)</span></span>
+<span class="list">(<span class="title">round</span><span class="body"> ARG <span class="keyword">&optional</span> DIVISOR)</span></span>
+<span class="comment">;; 运算</span>
+<span class="list">(<span class="title">+</span><span class="body"> <span class="keyword">&rest</span> NUMBERS-OR-MARKERS)</span></span>
+<span class="list">(<span class="title">-</span><span class="body"> <span class="keyword">&optional</span> NUMBER-OR-MARKER <span class="keyword">&rest</span> MORE-NUMBERS-OR-MARKERS)</span></span>
+<span class="list">(<span class="title">*</span><span class="body"> <span class="keyword">&rest</span> NUMBERS-OR-MARKERS)</span></span>
+<span class="list">(<span class="title">/</span><span class="body"> DIVIDEND DIVISOR <span class="keyword">&rest</span> DIVISORS)</span></span>
+<span class="list">(<span class="body"><span class="number">1</span>+ NUMBER)</span></span>
+<span class="list">(<span class="body"><span class="number">1</span>- NUMBER)</span></span>
+<span class="list">(<span class="title">abs</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="body">% X Y)</span></span>
+<span class="list">(<span class="title">mod</span><span class="body"> X Y)</span></span>
+<span class="list">(<span class="title">sin</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">cos</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">tan</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">asin</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">acos</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">atan</span><span class="body"> Y <span class="keyword">&optional</span> X)</span></span>
+<span class="list">(<span class="title">sqrt</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">exp</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">expt</span><span class="body"> ARG<span class="number">1</span> ARG<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">log</span><span class="body"> ARG <span class="keyword">&optional</span> BASE)</span></span>
+<span class="list">(<span class="title">log10</span><span class="body"> ARG)</span></span>
+<span class="list">(<span class="title">logb</span><span class="body"> ARG)</span></span>
+<span class="comment">;; 随机数</span>
+<span class="list">(<span class="title">random</span><span class="body"> <span class="keyword">&optional</span> N)</span></span>
+</pre></td></tr></table></figure>
+
+<h3>1.2 字符 character</h3>
+<p>字符(Character, 包括ASCII和宽字符，22bits)。字符也是数字。</p>
+<p>字符读入语法是在字符前加上问号。比如<code>?A</code>代表字符<code>A</code>。
+和C相同，一些控制字符需要加上转义符，如制表符<code>?\t</code>。</p>
+<p><code>\M-</code>表示Meta/Alt键，<code>\C-</code>表示Ctrl键。</p>
+<p>相关函数：</p>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+</pre></td><td class="code"><pre><span class="comment">;; 测试函数</span>
+<span class="list">(<span class="title">stringp</span><span class="body"> OBJECT)</span></span>
+<span class="list">(<span class="title">string-or-null-p</span><span class="body"> OBJECT)</span></span>
+<span class="list">(<span class="title">char-or-string-p</span><span class="body"> OBJECT)</span></span>
+<span class="comment">;; 构造函数</span>
+<span class="list">(<span class="title">make-string</span><span class="body"> LENGTH INIT)</span></span>
+<span class="list">(<span class="title">string</span><span class="body"> <span class="keyword">&rest</span> CHARACTERS)</span></span>
+<span class="list">(<span class="title">substring</span><span class="body"> STRING FROM <span class="keyword">&optional</span> TO)</span></span>
+<span class="list">(<span class="title">concat</span><span class="body"> <span class="keyword">&rest</span> SEQUENCES)</span></span>
+<span class="comment">;; 比较函数</span>
+<span class="list">(<span class="title">char-equal</span><span class="body"> C<span class="number">1</span> C<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">string=</span><span class="body"> S<span class="number">1</span> S<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">string-equal</span><span class="body"> S<span class="number">1</span> S<span class="number">2</span>)</span></span>
+<span class="list">(<span class="title">string&lt;</span><span class="body"> S<span class="number">1</span> S<span class="number">2</span>)</span></span>
+<span class="comment">;; 转换函数</span>
+<span class="list">(<span class="title">char-to-string</span><span class="body"> CHAR)</span></span>
+<span class="list">(<span class="title">string-to-char</span><span class="body"> STRING)</span></span>
+<span class="list">(<span class="title">number-to-string</span><span class="body"> NUMBER)</span></span>
+<span class="list">(<span class="title">string-to-number</span><span class="body"> STRING <span class="keyword">&optional</span> BASE)</span></span>
+<span class="list">(<span class="title">downcase</span><span class="body"> OBJ)</span></span>
+<span class="list">(<span class="title">upcase</span><span class="body"> OBJ)</span></span>
+<span class="list">(<span class="title">capitalize</span><span class="body"> OBJ)</span></span>
+<span class="list">(<span class="title">upcase-initials</span><span class="body"> OBJ)</span></span>
+<span class="list">(<span class="title">format</span><span class="body"> STRING <span class="keyword">&rest</span> OBJECTS)</span></span>
+<span class="comment">;; 查找与替换</span>
+<span class="list">(<span class="title">string-match</span><span class="body"> REGEXP STRING <span class="keyword">&optional</span> START)</span></span>
+<span class="list">(<span class="title">replace-match</span><span class="body"> NEWTEXT <span class="keyword">&optional</span> FIXEDCASE LITERAL STRING SUBEXP)</span></span>
+<span class="list">(<span class="title">replace-regexp-in-string</span><span class="body"> REGEXP REP STRING <span class="keyword">&optional</span> FIXEDCASE LITERAL SUBEXP START)</span></span>
+<span class="list">(<span class="title">subst-char-in-string</span><span class="body"> FROMCHAR TOCHAR STRING <span class="keyword">&optional</span> INPLACE)</span></span>
+</pre></td></tr></table></figure>
+
+<h3>1.3 符号 symbol</h3>
+<p>在Lisp中使用变量的必须通过<strong>符号(Symbol)</strong>类型来实现。
+符号类型由4个部分组成：。：</p>
+<ul>
+<li>符号名(Name)：只能绑定string对象。<code>symbol-name</code>访问。</li>
+<li>符号值(Value)：可以绑定任意类型。<code>symbol-value</code>访问，<code>defvar</code>和<code>defconst</code>赋值。</li>
+<li>函数(Function)：应该绑定function对象或macro对象。<code>symbol-function</code>访问，<code>defun</code>和<code>defmacro</code>赋值。</li>
+<li>属性列表(Property list)：应该绑定prperty list对象。<code>symbol-plist</code>访问。</li>
+</ul>
+<p>其中符号名必须绑定一个string对象，其它三个部分可以独立地绑定任何类型的对象。
+其中符号值和函数部分可以为空。
+因此符号类型是一种符号名到其它三个绑定对象的映射关系。</p>
+<p>符号名是由字符串组成，有命名规则。
+符号名具有唯一性。
+全局变量obarray记录着emacs中所有全局符号名到符号映射。
+也可以说这些符号使用相同的命名空间。
+<code>setq</code>可以设置全局变量，并绑定符号值或函数部分。
+也可以创建新的obarray，由<code>set</code>加入符号。
+obarray是自动增长的vector类型，通过hash符号名找到符号在vector中的位置。
+vector中每个元素是一个bucket，在bucket中符号由链表连接。
+在ELisp中只能通过<code>make-vector</code>创建obarray，<code>intern</code>插入符号。</p>
+<p>符号在Lisp求值时会根据符号名取出符号对象，然后返回符号值或函数并求值。
+而其它原子类型(数字，字符)都是<strong>自求值</strong>：简单返回自身。</p>
+<p>下面两种特殊的符号的符号值不能修改（也可以看成自求值的）：</p>
+<ol>
+<li>关键字(keywork)符号：符号名以<code>:</code>开始的符号。</li>
+<li><code>t</code>和<code>nil</code>表示的真假特殊符号。</li>
+</ol>
+<p>在Lisp中，符号<code>nil</code>有3三种不同的意义：</p>
+<ul>
+<li>逻辑上代表事实中的“假”</li>
+<li>一个名为nil的符号类型</li>
+<li>一个空的表类型，等价<code>()</code></li>
+</ul>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre></td><td class="code"><pre><span class="list">(<span class="title">symbolp</span><span class="body"> OBJECT)</span></span>
+<span class="list">(<span class="title">intern-soft</span><span class="body"> NAME <span class="keyword">&optional</span> OBARRAY)</span></span>
+<span class="list">(<span class="title">intern</span><span class="body"> STRING <span class="keyword">&optional</span> OBARRAY)</span></span>
+<span class="list">(<span class="title">unintern</span><span class="body"> NAME <span class="keyword">&optional</span> OBARRAY)</span></span>
+<span class="list">(<span class="title">mapatoms</span><span class="body"> FUNCTION <span class="keyword">&optional</span> OBARRAY)</span></span>
+<span class="list">(<span class="title">symbol-name</span><span class="body"> SYMBOL)</span></span>
+<span class="list">(<span class="title">symbol-value</span><span class="body"> SYMBOL)</span></span>
+<span class="list">(<span class="title">boundp</span><span class="body"> SYMBOL)</span></span>
+<span class="list">(<span class="title">set</span><span class="body"> SYMBOL NEWVAL)</span></span>
+<span class="list">(<span class="title">setq</span><span class="body"> SYM VAL SYM VAL ...)</span></span>
+<span class="list">(<span class="title">symbol-function</span><span class="body"> SYMBOL)</span></span>
+<span class="list">(<span class="title">fset</span><span class="body"> SYMBOL DEFINITION)</span></span>
+<span class="list">(<span class="title">fboundp</span><span class="body"> SYMBOL)</span></span>
+<span class="list">(<span class="title">symbol-plist</span><span class="body"> SYMBOL)</span></span>
+<span class="list">(<span class="title">get</span><span class="body"> SYMBOL PROPNAME)</span></span>
+<span class="list">(<span class="title">put</span><span class="body"> SYMBOL PROPNAME VALUE)</span></span>
+</pre></td></tr></table></figure>
+
+<h3>2. 复合数据类型</h3>
+<hr>
+<h3>2.1 序对 Cons Cells</h3>
+<p>Lisp提供一种称为<strong>序对(Cons Cells, construction of cells,或称Conses)</strong>的复合结构。</p>
+<p><img src="http://cs.gmu.edu/~sean/lisp/cons/cons.GIF" alt=""></p>
+<p>序对包含两个对象（或称槽slot)，第一个对象叫CAR(Contents of Address part of Register)，
+第二个对象叫CDR(Contents of the Decrement part of Register)。
+每个对象可以是任何类型，这是cons的<strong>闭包性质</strong>。
+<code>(cons 1 2)</code>表示用盒子指针表示：</p>
+<p><img src="http://mitpress.mit.edu/sicp/full-text/book/ch2-Z-G-11.gif" alt=""></p>
+<pre>
+对于C程序员来说：Lisp中并不区分保存一个值和指向一个值，因为指针在Lisp中是隐式的。
+</pre>
+
+<p>如前面所示，序对可以用函数<code>cons</code>构造出来<code>(cons CAR CDR)</code>：</p>
+<pre>
+(defvar x (cons 1 (cons 2 3)))    ; => x
+(car x)                           ; => 1
+(cdr x)                           ; => (2 . 3)
+(car (cdr x))                     ; => 2
+(cdr (cdr x))                     ; => 3
+</pre>
+
+<p><code>(CAR . CDR)</code>也是一种构造序对的方法：</p>
+<pre>
+(cons 1 (cons 2 3))               ; => (1 2 . 3)
+'(1 . (2 . 3))                    ; => (1 2 . 3)
+</pre>
+
+<p>序对可以用作构造任意种类的复杂数据结构的通用的基本构件，也是Lisp的核心数据结构类型。
+（这和哲学中任何多元论都可转变为二元论的思想一致。）
+正因为序对如此重要，我们把Lisp中不是序对的对象称为<strong>原子(atom)</strong>。</p>
+<h3>2.2 序列 Sequence</h3>
+<p>序列表示的是有序元素的集合。
+在Emacs Lisp中，序列有两种类型：<strong>列表(list)</strong>和<strong>数组(array)</strong>。</p>
+<p>一些叫做序列函数的函数，可以接受任何类型的序列。</p>
+<h3>2.3 列表 list</h3>
+<p>采用序对表示序列的方式很多，一种最直接的表示方式是把序对串成单链表一样，
+每个序对的car部分对应每个链中的条目，cdr部分则是链中下一个序对，最后一个序对的cdr用<code>nil</code>表示。
+这种嵌套序对形成的序列称为<strong>表(list)</strong>。</p>
+<p><img src="http://mitpress.mit.edu/sicp/full-text/book/ch2-Z-G-13.gif" alt=""></p>
+<p><code>()</code>或<code>nil</code>也可以当作一个不包含任何元素的序列，称为空表。
+因此<code>(A ())</code>等价于<code>(A nil)</code>。</p>
+<p><img src="https://public.bay.livefilestore.com/y1pgqtdo8MaVzUCe2V7FFJjKmpksx4hOKWfDzrF_tSrYDnJBKVwPpvfag-Rc2qOt7I4BwpDZeva3QOGTIEI0zcXFA/emacs-a-nil.png?psid=1" alt=""></p>
+<p>除了用<code>cons</code>和<code>.</code>嵌套地定义表之外，lisp方便地提供基本操作<code>list</code>来构造表。</p>
+<pre>
+(cons a1 (cons a2 (cons ... (cons an nil) ... )))
+(a1 . (a2 ... (an-1 . (an)) ... ))
+(list a1 a2 ... an)
+</pre>
+
+<p>显然，<code>cons</code>可以用于在已有的表的最前面添加一个元素。
+<code>append</code>用于合并两个表。
+<code>length</code>用于返回表的长度。</p>
+<pre>
+(defvar l (list 1 2 3))        ; => l
+(cons 0 l)                     ; => (0 1 2 3)
+(append l l)                   ; => (1 2 3 1 2 3)
+(length l)                     ; => 3
+</pre>
+
+<p><code>mapc</code>,<code>mapcar</code>,<code>dolist</code>用于遍历list。</p>
+<p>取出list元素的操作有<code>nth</code>，获得列表一个区间的函数有<code>nthcdr</code>、<code>last</code>和<code>butlast</code>。</p>
+<h4>2.3.1 列表模拟其它数据结构</h4>
+<p>使用<code>push</code>,<code>pop</code>操作操纵list可以模拟<strong>栈</strong>的行为。</p>
+<p>使用<code>append</code>,<code>delete-dups</code>,<code>memq</code>,<code>member</code>,<code>delq</code>,<code>remq</code>操作操纵list可以模拟<strong>集合</strong>的行为。</p>
+<p>把序对的看成指向左右孩子节点的指针，可以把这种结构看成二叉树。进一步推广，可以看成<strong>树</strong>。</p>
+<p><img src="http://mitpress.mit.edu/sicp/full-text/book/ch2-Z-G-15.gif&quot;" alt=""></p>
+<p>也可以实现association list关联列表（和2.6节hash table有区别）。</p>
+<p>list相关函数：</p>
+<figure class="highlight lang-lisp"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+</pre></td><td class="code"><pre>;; 测试
+(consp OBJECT)
+(listp OBJECT)
+(null OBJECT)
+;; 构造
+(cons CAR CDR)
+(list &rest OBJECTS)
+(append &rest SEQUENCES)
+;; 访问list元素
+(car LIST)
+(cdr LIST)
+(cadr X)
+(caar X)
+(cddr X)
+(cdar X)
+(nth N LIST)
+(nthcdr N LIST)
+(last LIST &optional N)
+(butlast LIST &optional N)
+;; 修改 cons cell
+(setcar CELL NEWCAR)
+30 1ÊÙ Äy-sequence ARG)
+(copy-tree TREE &optional VECP)
+;; 数组
+(vector &rest OBJECTS)
+(make-vector LENGTH INIT)
+(aref ARRAY IDX)
+(aset ARRAY IDX NEWELT)
+(vconcat &rest SEQUENCES)
+(append &rest SEQUENCES)
+</pre></td></tr></table></figure>
+
+<h3>2.5 函数 function</h3>
+<p>在Lisp中，函数是Lisp对象，是第一类型。
+函数有以下几类：</p>
+<ul>
+<li>lisp函数</li>
+<li>primitive function 原子函数</li>
+<li>lambda function</li>
+<li>特殊表达式</li>
+<li>macro</li>
+<li>command: 包含<code>interactive</code></li>
+</ul>
+<p><code>eval</code>,<code>funcall</code>,<code>apply</code>。</p>
+<p>Lisp中允许使用<code>lambda</code>定义匿名函数(anonymous function)。
+一个命名函数(named function)只是一个符号，其函数单元(function cell)指向一个有效函数。</p>
+<h3>2.6 哈希表 hash table</h3>
+<p>哈希表是一个快速索引表。</p>
+<h3>参考</h3>
+<ul>
+<li><a href="http://mitpress.mit.edu/sicp/full-text/book/book.html" target="_blank">SICP</a></li>
+<li><a href="http://www.gnu.org/software/emacs/manual/html_node/elisp/index.html" target="_blank">GNU Emacs Lisp Reference Manual</a></li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/emacs/">emacs</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

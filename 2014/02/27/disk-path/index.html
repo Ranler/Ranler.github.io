@@ -1,0 +1,251 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Device Path For Linux | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="Linux 设备路径的命名方式有：
+
+Standard Path
+udev: by-id by-path by-uuid
+MultiPath
+
+1. standard path
+Linux设备的标准路径就在/dev/*下面，包括常用的
+
+磁盘，如/dev/sda
+光驱，如/dev/cdrom
+
+2.">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Device Path For Linux"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2014-02-27T08:44:05.000Z"><a href="/2014/02/27/disk-path/">Feb 27 2014</a></time>
+      
+      
+  
+    <h1 class="title">Device Path For Linux</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>Linux 设备路径的命名方式有：</p>
+<ul>
+<li>Standard Path</li>
+<li>udev: by-id by-path by-uuid</li>
+<li>MultiPath</li>
+</ul>
+<h3>1. standard path</h3>
+<p>Linux设备的标准路径就在<code>/dev/*</code>下面，包括常用的</p>
+<ul>
+<li>磁盘，如<code>/dev/sda</code></li>
+<li>光驱，如<code>/dev/cdrom</code></li>
+</ul>
+<h3>2. udev</h3>
+<p>udev是Linux内核的设备管理器，用于代替<code>devfs</code>来管理<code>/dev</code>目录下的设备文件，
+和代替<code>hotplug</code>管理用户空间的插拔设备行为。
+udev可能使用sysfs位于<code>/sys</code>下的信息。</p>
+<p>udev可以配置规则用于设备的命名。
+默认规则保存在<code>/lib/udev/rules.d/</code>下，
+用户可以在<code>/etc/udev/rules.d/</code>目录下定义自己的规则。
+规则修改后无需重启udev，即可适用于新添加的设备。
+规则的编写可以参考<a href="http://www.reactivated.net/writing_udev_rules.html" target="_blank">Writing udev rules</a>。</p>
+<p>udev在<code>/dev/disk/</code>目录下为存储设备预设了的一些命名规则，
+包括by-id, by-path, by-label, by-uui四种命名方式。
+这些四种命名方式通过软链接映射到<code>/dev/sd*</code>下。</p>
+<p>udev相关命令可以参考<code>udevadm</code>。</p>
+<h3>3. Multipath</h3>
+<p>Linux中同一个Volume的不同物理路径映射到了文件系统的不同设备路径上。
+Multipath可以为这些路径提供统一的命名。
+这样可以提供：</p>
+<ul>
+<li>冗余性(Reducdancy)：如果一条物理路径不同，可以走另一条物理路径，完成容错/高可用性/鲁棒性；</li>
+<li>性能：多物理路径可以进行IO负载平衡，提高性能；</li>
+</ul>
+<p>Linux中Multipath模块叫做DM-Multipath，安装相应包之后，
+最终会映射到<code>/dev/mapper/mpath*</code>位置。
+Multipath路径也被udev管理，可以通过规则映射到其它目录下。</p>
+<p>一个简单的例子如下，已存在两个设备路径<code>/dev/sdb</code>和<code>/dev/sdc</code>，
+分别是FC链路和iSCSI链路连接同一磁盘。
+安装mutlipath包之后，配置/etc/multipath.conf，
+修改为以下字段，把不需要设为multipath的磁盘屏蔽，然后重启。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre>1
+2
+3
+</pre></td><td class="code"><pre><span class="title">devnode_blacklist</span> {
+        <span class="title">devnode</span> <span class="string">"^sda"</span>
+}
+</pre></td></tr></table></figure>
+
+<p>接下来设置MultiPath：</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+</pre></td><td class="code"><pre><span class="preprocessor"># modprobe dm-multipath</span>
+<span class="preprocessor"># modprobe dm-round-robin</span>
+<span class="preprocessor"># multipath -v2</span>
+<span class="preprocessor"># service multipathd start</span>
+</pre></td></tr></table></figure>
+
+<p>最终检查MultiPath的路径：</p>
+<figure class="highlight lang-sh"><table><tr><td class="gutter"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre><span class="comment"># ls /dev/mapper/</span>
+control  mpath0  VolGroup00-LogVol00  VolGroup00-LogVol01
+
+<span class="comment"># multipath -l</span>
+mpath0 (3600000e00d1100000011158100500000) dm-2 FUJITSU,ETERNUS_DXL<span class="sqbracket">
+[size=200M][features=1 queue_if_no_path][hwhandler=0][rw]</span>
+\_ round-robin 0<span class="sqbracket"> [prio=0][active]</span>
+ \_ 1:0:0:0 sdc 8:32 <span class="sqbracket"> [active][undef]</span>
+\_ round-robin 0<span class="sqbracket"> [prio=0][enabled]</span>
+ \_ 0:0:1:0 sdb 8:16 <span class="sqbracket"> [active][undef]</span>
+</pre></td></tr></table></figure>
+
+<p><code>/dev/mapper/mpath0</code>就是新的multipath路径。</p>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Storage/">Storage</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>

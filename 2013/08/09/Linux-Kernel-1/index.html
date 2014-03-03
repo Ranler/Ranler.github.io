@@ -1,0 +1,757 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Linux Kernel Quickstart | Finding for Joy at Sea</title>
+  <meta name="author" content="Ranler Cao">
+  
+  <meta name="description" content="Linux is a preemptive mutlitasking operating system.
+Typical components of a kernel are:
+
+interrupt handles to service interrupt requests(abstract of ">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="Linux Kernel Quickstart"/>
+  <meta property="og:site_name" content="Finding for Joy at Sea"/>
+
+  
+    <meta property="og:image" content="undefined"/>
+  
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Finding for Joy at Sea" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  
+
+  <!-- for plugins in post -->
+  
+
+</head>
+
+
+<body>
+  <div id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Finding for Joy at Sea</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div></div>
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+  
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2013-08-08T16:00:00.000Z"><a href="/2013/08/09/Linux-Kernel-1/">Aug 9 2013</a></time>
+      
+      
+  
+    <h1 class="title">Linux Kernel Quickstart</h1>
+  
+
+    </header>
+
+
+    
+    <div class="entry">
+        <p>Linux is a preemptive mutlitasking operating system.</p>
+<p>Typical components of a kernel are:</p>
+<ul>
+<li>interrupt handles to service interrupt requests(abstract of CPU)</li>
+<li>a scheduler to share processor time among multiple processes(multitasking)</li>
+<li>a memory management to manage process address spaces(virtual memory)</li>
+<li>services such as networking and IPC(communication between Processes)</li>
+</ul>
+<p>Each processor is doing exactly one of three things at any given moment:</p>
+<ul>
+<li>In user-space, executing user code in process</li>
+<li>In kernel-space, in process context, executing on behalf of a specific process</li>
+<li>In kernel-space, in interrupt context, not associated with a process, handing an interrupt</li>
+</ul>
+<ul>
+<li>monolithic kernel</li>
+<li>microkernel</li>
+</ul>
+<h3>Process</h3>
+<p>process provide two virtualizations:</p>
+<ul>
+<li>virtualized processor</li>
+<li>virtual memory</li>
+</ul>
+<p><strong>Task list</strong> is a cirular doubly linked list.
+Each element in the task list is a process descriptor of the type <code>struct task_struct</code>.
+The <code>task_struct</code> is at around 1.7KB on a 32-bit machine.
+The <code>task_struct</code> structure is allocated via the <strong>slab allocator</strong> to provide object reuse and cache coloring.</p>
+<p>The max value of process may increase via <code>/proc/sys/kernel/pid_max</code>.</p>
+<p>There are five flags for process states:</p>
+<ul>
+<li>TASK_RUNNING: 执行态，就绪态</li>
+<li>TASK_INTERRUPTIBLE: 阻塞态，响应signal</li>
+<li>TASK_UNINTERRUPTIBLE: 阻塞态，不响应signal</li>
+<li>__TASK_TRACED: 进程被别的进程traced，如gdb, pstrace</li>
+<li>__TASK_STOPED: 进程收到SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU信号，或debug时收到任意信号</li>
+</ul>
+<p>When creating a process, by COW technology, the only overhead by <code>fork()</code> is duplication of the parent&#39;s page tables and new a PID.
+The only benifit to <code>vfork()</code> is not copying the parent page tables entries.
+<code>fork()</code> implemented via the <code>clone()</code>.</p>
+<p>Threads are also created via <code>clone()</code> of different flags,
+with sharing the address space, filesystem resources, file descriptors and signal handlers.</p>
+<pre><code><span class="keyword">clone</span>(SIGCHLD, <span class="number">0</span>);                                             <span class="comment">// normal fork</span>
+<span class="keyword">clone</span>(CLONE_VFORK | CLONE_VM | SIGCHLD, <span class="number">0</span>);                    <span class="comment">// vfork</span>
+<span class="keyword">clone</span>(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND, <span class="number">0</span>);   <span class="comment">// create thread</span></code></pre>
+<p>Compare with normal theads ,kernel threads do not have an adress space.
+The notably kernel threads are <code>flush</code> and <code>ksoftiqd</code>.</p>
+<h3>Process Scheduling</h3>
+<ul>
+<li>cooperative multitasking</li>
+<li>preemptive multitasking</li>
+</ul>
+<p>Two separate priority range:</p>
+<ul>
+<li>nice value: -20 ~ +19</li>
+<li>real-time priority: 0~99, only for real-time processes</li>
+</ul>
+<p><strong>Completely Fair Scheduler(CFS)</strong> uses a <strong>red-black tree</strong> to manage the list of runable processes 
+and efficiently find the process with the smallest <strong>vruntime</strong>.
+When process is sleeping, remove it from red-black tree, put it into <strong>wait queue</strong> to wait an event , and call <code>schedule()</code> to select a new process to excute.</p>
+<p><code>schedule()</code> call <code>context_switch()</code> to do two basic jobs:</p>
+<ul>
+<li><code>switch_mm()</code> to switch the virtual memory mapping</li>
+<li><code>switch_to()</code> to switch stack information and the processor registers</li>
+</ul>
+<ul>
+<li>User Preemption can occur<ul>
+<li>When returning to user-space from a system call</li>
+<li>When returning to user-space from an iterrupt handler</li>
+</ul>
+</li>
+<li>Kernel Preemption can occur<ul>
+<li>When an interrupt handler exists, before returning to kernel-space</li>
+<li>When kernel code becomes preemptible again</li>
+<li>If a task in the kernel explicitly calls <code>schedule()</code></li>
+<li>If a task in the kernel blocks (which results in a call to <code>schedule()</code>)</li>
+</ul>
+</li>
+</ul>
+<p>Linux provide soft real-time scheduling policies, <code>SCHED_FIFO</code> and <code>SCHED_RR</code>.
+The not real-time scheduling policy is <code>SCHED_NORMAL</code>.
+These real-time policies are managed not by CFS.</p>
+<h3>System Calls</h3>
+<ul>
+<li>provide an abstracted hardware interface for userspace</li>
+<li>ensure system security and stability</li>
+<li>provide virtualized system to processes</li>
+</ul>
+<p>Linux&#39;s system calls is POSIX and SUSv3 compliant.</p>
+<p>User-space process use a software interrupt and trap into kernel-space to execute a system call.
+The system call handler(<code>system_call()</code>) act as exception handler to be executed when an exception occur and system switch to kernel mode.
+The defined software interrupt on x86 is 128(<code>int $0x80</code>).</p>
+<p>Recently, x86 processors added a feature known as <code>sysenter</code> to provide a faster, more specialized way of trapping into a kernel to execute a system call than using the <code>int</code> interrupt instruction.</p>
+<p>Each system call is assigned a unique syscall number.
+Before the trap into system call, user-space process set syscall number into <code>eax</code>register.
+<code>system_call()</code> check this value and call the specified system call in system call table.
+The parameters also store in registers(<code>ebx,ecx,edx,esi,edi</code>) and the return value written into <code>eax</code> register in easiest time.</p>
+<p>The kernel provides two methods <code>copy_to_user()</code> and <code>copy_from_user()</code> for performing the requisite checks and the desired copy to and from user-space.</p>
+<h3>Kernel Data Structures</h3>
+<ul>
+<li>Linked Lists<ul>
+<li>Singly and Doubly Linked Lists</li>
+<li>Circular Linked Lists</li>
+</ul>
+</li>
+<li>Queues</li>
+<li>Maps</li>
+<li>Binary trees</li>
+</ul>
+<h4>Circular Doubly Linked List</h4>
+<p>Linux embed a linked list node in the structure instead of turning the structure into a linked list.</p>
+<pre><code class="lang-.c"><span class="keyword">struct</span> list_head {
+    <span class="keyword">struct</span> list_head *next;
+    <span class="keyword">struct</span> list_head *prev;
+};</code></pre>
+<pre><code class="lang-.c">struct fox <span class="comment">{
+    long data;
+    struct list_head list;
+}</span>;
+
+struct fox *f = kmalloc(sizeof<span class="comment">(*f), GFP_KERNEL);
+INIT_LIST_HEAD(&amp;f-&gt;list);</code></pre>
+<p>O(1) operations:</p>
+<pre><code class="lang-.c">list_add(<span class="keyword">struct</span> list_head *<span class="keyword">new</span>, <span class="keyword">struct</span> list_head *head);
+list_add_tail(<span class="keyword">struct</span> list_head *<span class="keyword">new</span>, <span class="keyword">struct</span> list_head *head);
+list_del(<span class="keyword">struct</span> list_head *entry);
+list_del_init(<span class="keyword">struct</span> list_head *entry);
+list_move(<span class="keyword">struct</span> list_head *<span class="built_in">list</span>, <span class="keyword">struct</span> list_head *head);
+list_move_tail(<span class="keyword">struct</span> list_head *<span class="built_in">list</span>, <span class="keyword">struct</span> list_head *head);
+list_empty(<span class="keyword">struct</span> list_head *head);
+list_splice(<span class="keyword">struct</span> list_head *<span class="built_in">list</span>, <span class="keyword">struct</span> list_head *head);
+list_splice_init(<span class="keyword">struct</span> list_head *<span class="built_in">list</span>, <span class="keyword">struct</span> list_head *head);</code></pre>
+<p>O(n) operations:</p>
+<pre><code class="lang-.c">struct list_head *p;
+struct fox *f;
+
+list_for_each(p, &amp;f_list) {
+    f = list_entry(p, struct fox, list);
+    <span class="keyword">...</span>
+}
+
+list_for_each_entry(f, &amp;f_list, list) {
+    <span class="keyword">...</span>
+}
+
+list_for_each_entry_reverse(f, &amp;f_list, list) {
+    <span class="keyword">...</span>
+}
+
+list_for_each_entry_safe(f, <span class="keyword">next</span>, &amp;f_list, list) {
+    // safety remove f from f_list
+    <span class="keyword">...</span>
+}</code></pre>
+<h4>Queue</h4>
+<p>Linux kernel provide <code>kfifo</code> as queue and some API for it.</p>
+<h4>Map</h4>
+<p>Map also known as associative array.</p>
+<ul>
+<li>Map: UID-to-pointer mapping</li>
+<li>Binary Search Tree</li>
+<li>Self-Balancing Binary Search Tree</li>
+<li>Red-Black Tree (semi-balanced)</li>
+</ul>
+<h3>Interrupts and Interrupt Handlers</h3>
+<ul>
+<li>interrupt: asynchronous interrupts generated by hardware</li>
+<li>exception: synchronous interrupts generated by processor</li>
+</ul>
+<p>Both interrupts and exceptions have similar handlers.
+These handlers run in a special context called <strong>interrupt context</strong> in which code executing is unable to block.</p>
+<p>The processing of interrupts is split into two parts:</p>
+<ul>
+<li>top half: an interrupt handler execute quickly</li>
+<li>bottom half: perform a large amount of work</li>
+</ul>
+<p>Interrupt values are often called interrupt request (IRQ) lines.
+Each IRQ line is assignd a numeric value.
+For some devices, this value is typically hard-coded.
+For most devices, it is probed or otherwise determined programmatically and dynamically.</p>
+<p><code>/proc/interrupts</code> file list all interrupts in running Linux.</p>
+<h3>Kernel Synchronization</h3>
+<p>Locks are <strong>advisory</strong> and <strong>voluntary</strong>.</p>
+<p>Almost all processors implement an atomic <strong>test</strong> and <strong>set</strong> instruction that tests the value of an integer ans sets it to a new value only if it is zero.
+On the popular x86 architecture, locks are implemented using such a similar instruction called <strong>compare</strong> and <strong>exchange</strong>.</p>
+<ul>
+<li>interrupt-safe</li>
+<li>SMP-safe      <code>CONFIG_SMP</code></li>
+<li>prempt-safe   <code>CONFIG_PREEMPT</code></li>
+</ul>
+<p>Big Fat Rule: lock data, not code.</p>
+<h4>1. atomic integer</h4>
+<pre><code>atomic_t v;
+atomic_t u = ATOMIC_INIT(<span class="number">0</span>);
+
+atomic_set(&amp;v, <span class="number">4</span>);
+atomic_add(<span class="number">2</span>, &amp;v);
+atomic_inc(&amp;v);
+printf(<span class="string">"%d\n"</span>, atomic_read(%v));       // atomic_t -&gt; int
+<span class="keyword">...</span>                                    // more functions <span class="keyword">in</span> &lt;asm/atomic.h&gt;</code></pre>
+<p>There also has <code>atomic64_t</code> and functions for 64-bit architectures.</p>
+<h4>2. atomic bitwise</h4>
+<p>Atomic bitwise operations on generic memory addresses in <asm/bitops.h></p>
+<h4>3. spin lock 自旋锁</h4>
+<p>Spin lock is a lightweight single-holder lock that should be held for short durations.(keep runing, not sleep)</p>
+<pre><code class="lang-.c">// &lt;linux/spinlock.h&gt;, &lt;linux/spinlock.h&gt;
+DEFINE_SPINLOCK(mr_lock);
+spin_lock(&amp;mr_lock);
+spin_unlock(&amp;mr_lock);
+<span class="keyword">...</span></code></pre>
+<p>WARING: Spin lock are <strong>not recursive</strong>.
+Spin lock can be used in interrupt handlers, where semaphores cannot be used because they sleep.
+It must disable interrupts to prevent deadlock.</p>
+<h4>4. reader-writer spin lock</h4>
+<p>Reader/Writer, Consumer/Producer, Shared/Exclusive, Concurrent/Exclusive locks</p>
+<pre><code class="lang-.c">DEFINE_RWC<span class="operator"><span class="keyword">LOCK</span>(mr_rwlock);</span>
+
+read_<span class="operator"><span class="keyword">lock</span>(&amp;mr_rwlock);</span>
+// critical section
+read_un<span class="operator"><span class="keyword">lock</span>(&amp;mr_rwlock);</span>
+
+write_<span class="operator"><span class="keyword">lock</span>(&amp;mr_rwlock);</span>
+// critical section
+write_un<span class="operator"><span class="keyword">lock</span>(&amp;mr_rwlock);</span></code></pre>
+<h4>5. semaphore</h4>
+<p>Semaphores are sleeping locks and have much greater overhead than spin locks.
+When a task attempt to acquire a semaphore that is unavaiable, the semaphore places the task onto a wait queue and puts the task to sleep.
+Semaphores are well suited to locks that are held for a long time and must be obtained only in process context(not in interrupt context).
+You cannot hold a spin lock while you acquire a semaphore.</p>
+<p>Number of simultaneous lock holders:</p>
+<ul>
+<li>1: binary semaphore, mutex</li>
+<li><p>bigger than 1: counting semaphore</p>
+</li>
+<li><p><code>P()</code>: Proberen, <code>down()</code></p>
+</li>
+<li><code>V()</code>: Verhogen, <code>up()</code></li>
+</ul>
+<pre><code class="lang-.c"><span class="comment">// &lt;asm/semaphore.h&gt;</span>
+<span class="keyword">struct</span> semaphore name;
+sema_init(&amp;name, count);      <span class="comment">// counting semaphore</span>
+<span class="keyword">static</span> DECLARE_MUTEX(name);   <span class="comment">// binary semaphore</span>
+
+<span class="keyword">if</span> (down_interruptible(&amp;name)) {
+    <span class="comment">// signal received, semaphore not acquired</span>
+}
+
+<span class="comment">// critical region</span>
+
+up(&amp;name)</code></pre>
+<p>Semaphores also have reader-writer semaphores.</p>
+<h4>6. mutex</h4>
+<p>There is a new sleeping lock named mutex which is different with binary semphore.
+This mutex is simpler and lighter than binary semphore.</p>
+<p>Other Locks:</p>
+<ul>
+<li>Completion Variables</li>
+<li>The Kernel Lock</li>
+<li>Sequential Locks</li>
+</ul>
+<h4>Ordering and Barries</h4>
+<p>Both the compiler(static) and the processor(dynamical) can <strong>reorder</strong> reads and writes for performance reasons.
+<strong>Barrier instruction</strong> ensure that no loads/stores prior to the instruction will be reordered to after the instruction
+and no loads/stores after the instruction will be reordered to before the instruction.</p>
+<ul>
+<li><code>rmb()</code>/<code>smp_rmb()</code>: read memory barrier</li>
+<li><code>wmb()</code>/<code>smp_wmb()</code>: write memory barrier(x86 CPU does not perform out-of-order stroes, so this does nothing)</li>
+<li><code>mb()</code>/<code>smp_mb()</code>: read and write barrier</li>
+<li><code>read_barrier_depends()</code>: read barrier only for loads on which subsequent loads depend</li>
+<li><code>barrier()</code>: prevent compiler reorder</li>
+</ul>
+<h3>Timers and Time Management</h3>
+<h4>time interrupt</h4>
+<p>Works executed periodically on every timer interrupt:</p>
+<ul>
+<li>Updating the system uptime and time of day</li>
+<li>Updating resouce usage and processor time statistics</li>
+<li>Balancing the scheduler runquenes on an SMP system</li>
+<li>Running any dynamic timers that have expired</li>
+</ul>
+<p>The tick rate has a frequency of <code>HZ</code> hertz and a period of 1/HZ seconds.
+By default, the x86 architecture defines HZ to be 100.
+This means that the time interrupt handler runs every 10ms.</p>
+<pre><code class="lang-.c"><span class="comment">// &lt;include/asm-generic/param.h&gt;</span>
+   <span class="number">8</span> <span class="preprocessor"># <span class="keyword">define</span> USER_HZ        100             /* some user interfaces are */</span></code></pre>
+<p>The golbal variable <code>jiffies</code> holds the number of ticks that occurred since the system booted.</p>
+<p>The timer interrupt handler also into two pieces: an arch-dependent and an arch-independent routime(<code>tick_periodic()</code>).
+<code>tick_periodic()</code> will call <code>schedular_tick()</code> to reschedular processes and balancing unquenes on SMP.</p>
+<h4>timer</h4>
+<p>Timers/Dynamic Timers/Kernel Timers offer process to delay exection until a late time.</p>
+<pre><code class="lang-.c">struct timer_list my_timer<span class="comment">;</span>
+my_timer<span class="preprocessor">.expires</span> = jiffies + delay<span class="comment">;</span>
+my_timer<span class="preprocessor">.data</span> = <span class="number">0</span><span class="comment">;</span>
+my_timer<span class="preprocessor">.function</span> = my_function<span class="comment">;</span>
+
+add_timer(&amp;my_timer)<span class="comment">;</span>
+mod_timer(&amp;my_timer, jiffies + new_delay)<span class="comment">;</span>
+del_timer(&amp;my_timer)<span class="comment">;</span></code></pre>
+<h4>Delaying Exection</h4>
+<p>Delaying exection for busy looping and small delays.</p>
+<h3>Memory Management</h3>
+<ul>
+<li>kernel physical address: Physical </li>
+<li>kernel logical address: Segment + Offset</li>
+<li>kernel virtual/linear address: MMU</li>
+</ul>
+<p>logical address and virtual address are same in kernel&#39;s address space?</p>
+<h4>Physical Pages</h4>
+<p>The kernel treats <strong>physical pages</strong> as the basic unit of memory management.
+The memory management unit(MMU) also typically deals in pages.
+Most 32-bit architectures have 4KB pages, whereas most 64-bit architecture have 8KB pages.
+The kernel repesents <strong>every physical page</strong> with a <code>strcut page</code> structure(<linux/mm_types.h>).
+Pages&#39;s owners include:</p>
+<ul>
+<li>user-space processes</li>
+<li>dynamically allocated kernel data</li>
+<li>static kernel code</li>
+<li>page cache</li>
+</ul>
+<h4>Zones</h4>
+<p>The kernel divides physical pages into different zones(logical groupings):</p>
+<ul>
+<li>ZONE_DMA: This zone contains pages that can undergo DMA</li>
+<li>ZONE_DMA32: same as ZONE_DMA, but accessible only by 32-bit devices</li>
+<li>ZONE_NORMAL: normal pages</li>
+<li>ZONE_HIGHMEM: not permanently mappred into the kernel&#39;s address space. </li>
+</ul>
+<p>Some architectures can physically addressing larger acmounts of memory than they can virtually address.
+So, some memory(ZONE_HIGHMEM) is not permanently mapped into the kernel address space.
+Pages in ZONE_HIGHMEM must be mapped into ZONE_NORMAL.</p>
+<p>Physical memory address:</p>
+<table>
+<thead>
+<tr>
+<th>Zone</th>
+<th>Description</th>
+<th>x86-32</th>
+<th>x86-64</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ZONE_DMA</td>
+<td>DMA-able pages</td>
+<td>&lt; 16MB</td>
+<td>&lt; 1GB</td>
+</tr>
+<tr>
+<td>ZONE_NORMAL</td>
+<td>Normally addresssable pages</td>
+<td>16-896MB</td>
+<td>1GB - 64GB</td>
+</tr>
+<tr>
+<td>ZONE_HIGHMEM</td>
+<td>Dynamically mapped pages</td>
+<td>&gt; 896MB</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>Virtual memory address:</p>
+<p>| virutal memory address | x86-32     | x86-64     |
+| User space             | 0G-3G      | 0G- &gt;512G  |
+| Kernel space           | 3G-4G      | &gt;512G      |</p>
+<h4>Allocate and Free Pages and Bytes</h4>
+<p>Low-level page function:</p>
+<pre><code class="lang-.c"><span class="comment">// allocate</span>
+<span class="keyword">struct</span> page * alloc_page(gtp_t gfp_mask, <span class="keyword">unsigned</span> <span class="keyword">int</span> order);     <span class="comment">// get contiguous physical pages, number of 2^order pages</span>
+<span class="keyword">void</span> * page_address(<span class="keyword">struct</span> page *page);                           <span class="comment">// return logical address</span>
+<span class="keyword">unsigned</span> <span class="keyword">long</span> __get_free_pages(gfp_t gfp_mask, <span class="keyword">unsigned</span> <span class="keyword">int</span> order);
+<span class="keyword">unsigned</span> <span class="keyword">long</span> get_zeroed_page(<span class="keyword">unsigned</span> <span class="keyword">int</span> gfp_mask);
+
+<span class="comment">// free</span>
+<span class="keyword">void</span> __free_pages(<span class="keyword">struct</span> page *page, <span class="keyword">unsigned</span> <span class="keyword">int</span> order);
+<span class="keyword">void</span> free_pages(<span class="keyword">unsigned</span> <span class="keyword">long</span> addr, <span class="keyword">unsigned</span> <span class="keyword">int</span> order);
+<span class="keyword">void</span> free_page(<span class="keyword">unsigned</span> <span class="keyword">long</span> addr);</code></pre>
+<p>Byte-sized allocation:</p>
+<pre><code class="lang-.c"><span class="comment">// &lt;linux/slab.h&gt;</span>
+<span class="keyword">void</span> * kmalloc(size_t size, gfp_t flags);   <span class="comment">// at least size bytes physically contiguous region, return logical address</span>
+<span class="keyword">void</span> kfree(<span class="keyword">const</span> <span class="keyword">void</span> *ptr);
+
+<span class="comment">// &lt;linux/vmalloc.h&gt;</span>
+<span class="keyword">void</span> * vmalloc(<span class="keyword">unsigned</span> <span class="keyword">long</span> size);   <span class="comment">// virtually contiguous region, return virtual address</span>
+<span class="keyword">void</span> vfree(<span class="keyword">const</span> <span class="keyword">void</span> *addr);</code></pre>
+<table>
+<thead>
+<tr>
+<th>allocate</th>
+<th>physically contiguous</th>
+<th>virtually contigous</th>
+<th>environment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kmalloc</td>
+<td>YES</td>
+<td>YES</td>
+<td>used by hardware(DMA) or has a better performance</td>
+</tr>
+<tr>
+<td>vmalloc</td>
+<td>NO</td>
+<td>YES</td>
+<td>large regions of memory</td>
+</tr>
+</tbody>
+</table>
+<h4>Slab Layer</h4>
+<p><strong>Free List</strong> is often introduced to allocate and deallocate data.
+But there exists no global control in linux kernel and the kernel has no understanding of the random free lists at all.
+So the kernel provides the <strong>slab layer/allocator</strong> as a generic data <strong>structure-caching</strong> layer(分配特定大小的对象).</p>
+<p>Different types of object (such as <code>task_struct</code>, <code>inode</code>) have their own groups called <strong>caches</strong>.
+Each cache has many <strong>slabs</strong>.
+Each slab is in one the three state: full, partial or empty.
+Each slab is composed of one or more physical contiguous pages.
+Each slab has many target <strong>objects</strong>.</p>
+<p>Each cache <code>struct kmem_cache</code> has three lists:</p>
+<ul>
+<li><code>slabs_full</code>: a full slab list</li>
+<li><code>slabs_partial</code>: a partial slab list</li>
+<li><code>slabs_empty</code>: a empty slab list </li>
+</ul>
+<p>When <code>inode</code> need to allocate, it is get <code>inode_cachep</code> cache and find a slab in partial slab list, return a free object.</p>
+<p><code>kmalloc()</code> also use slab layer to allocate and free byte-based memory.
+Slab layer use <code>__get_free_pages()</code> or  <code>alloc_page()</code> to allocate and free page-based memory.</p>
+<pre><code><span class="function"><span class="title">kmalloc</span><span class="params">()</span>   ===&gt;   S<span class="title">lab</span> L<span class="title">ayer</span>   ===&gt;  __<span class="title">get_free_pages</span><span class="params">()</span></code></pre>
+<h4>Kernel Stack and Interrupt Stack</h4>
+<p>There are one or two(default) pages for <strong>kernel stack</strong> per process.
+This is usually 8KB for 32bit architecture and 18KB for 64bit architecture by default.</p>
+<p><strong>Interrupt stacks</strong> provide a single page per processor stack used for interrupt handlers.</p>
+<h4>High Memory Mapping</h4>
+<p>Pages physical address in ZONE_HIGHMEM(over 896MB) must be mapped into the kernel&#39;s logical address(3GB-4GB on x86).</p>
+<pre><code><span class="keyword">void</span> *kmap(<span class="keyword">struct</span> page *page);     <span class="comment">// physical address =&gt; logical address, only work in process context</span>
+<span class="keyword">void</span> kunmap(<span class="keyword">struct</span> page *page);    <span class="comment">// free logical address</span>
+<span class="keyword">void</span> *kmap_atomic(<span class="keyword">struct</span> page *page, <span class="keyword">enum</span> km_type type); <span class="comment">// temporary mappings</span></code></pre>
+<h3>The Virtual Filesystem</h3>
+<p>Together, these two modules provide the abstractions, interfaces, and glue that allow user-space programs to issue generic system calls to access files via a uniform naming policy on any filesystem, which itself exists on any storage medium.</p>
+<ul>
+<li>VFS</li>
+<li>block I/O layer</li>
+</ul>
+<p>VFS contains these typies of objects:</p>
+<ul>
+<li><code>struct file</code>: an opened file and directory file</li>
+<li><code>struct entry</code>: a component of a path for link inode</li>
+<li><code>struct inode</code>: an special index node for file metadata such as access permissions, size, owner, creation time and so on</li>
+<li><code>struct super_block</code>: an special filesystem metadata</li>
+</ul>
+<p>Operations objects on these typies of objects that target filesystem should be implemented :</p>
+<ul>
+<li><code>struct super_operations</code>: such as <code>write_inode()</code>, <code>sync_fs()</code></li>
+<li><code>struct inode_operations</code>: such as <code>create()</code>, <code>link()</code></li>
+<li><code>struct dentry_operations</code>: such as <code>d_compare()</code>, <code>d_delete()</code></li>
+<li><code>struct file_operations</code>: such as <code>read()</code>, <code>write()</code></li>
+</ul>
+<pre><code><span class="comment">file1</span> <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>&gt; <span class="comment">entry1</span> <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>&gt; <span class="comment">inode</span> <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>&gt; <span class="comment">disk</span> <span class="comment">media</span>
+<span class="comment">file2</span> <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="comment">|</span>               <span class="comment">|</span>
+<span class="comment">file3</span> <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="literal">-</span>&gt; <span class="comment">entry2</span> <span class="literal">-</span><span class="literal">-</span><span class="literal">-</span><span class="comment">|</code></pre>
+<h3>The Block I/O Layer</h3>
+<p>Device types:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>access</th>
+<th>devices</th>
+<th>usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>block device</td>
+<td>randomly</td>
+<td>hard disk, Blu-ray reader, flash</td>
+<td>generately mounted as a filesystem</td>
+</tr>
+<tr>
+<td>character device</td>
+<td>sequentially</td>
+<td>serial ports, keyboard, pseudo-devices, printers</td>
+<td>directly through deive node</td>
+</tr>
+<tr>
+<td>ethernet device</td>
+<td>sequentially</td>
+<td>network device</td>
+<td>socket</td>
+</tr>
+</tbody>
+</table>
+<p>The smallest addressable unit on a block device is a <strong>sector</strong>(扇区).
+The block is an abstraction of the filesystem which is operated on.
+Although the physical device is addressable at the sector level,
+the kernel performs all disk operations in terms of blocks.</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>common size</th>
+<th>type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>memory page</td>
+<td>4KB/8KB</td>
+<td>physical</td>
+</tr>
+<tr>
+<td>block (filesystem blocks/IO blocks)</td>
+<td>512B, 1KB, 4KB</td>
+<td>logical</td>
+</tr>
+<tr>
+<td>sector(hard sectors/device blocks)</td>
+<td>512B</td>
+<td>physical</td>
+</tr>
+</tbody>
+</table>
+<p>A single page can hold one or more blocks in memory.
+Each block is stored in a <strong>buffer</strong> which also associated with a descriptor to store control information.
+This descriptor is called <code>struct buffer_head</code>.</p>
+<p>In the 2.6 kernel, much more work has gone into making the kernel work directly with pages and address spaces instead of buffers.
+The new <code>struct bio</code> represents block I/O operations that in flight as a list of segment <code>struct bio_vec</code>.</p>
+<ul>
+<li><code>struct buffer_head</code>: represent a single buffer</li>
+<li><code>struct bio</code>: represent one or more pages, both normal page I/O and direct I/O, much more lightweight</li>
+</ul>
+<h4>I/O Schedulers</h4>
+<p>Merging and sorting I/O request to minimize disk seeks and ensure optimum disk perfrmance
+is two primary actions of I/O schedulars.</p>
+<ul>
+<li>The Deadline I/O Schedular</li>
+<li>The Anticipatory I/O Schedular</li>
+<li>The Complete Fair Queuing I/O Schedular (default)</li>
+<li>The Noop I/O Schedular</li>
+</ul>
+<h3>The Process Address Space</h3>
+<p>Memory areas/sections for process address space(<code>/proc/PID/maps</code>):</p>
+<ul>
+<li>text, data, bss, stack section</li>
+<li>additional text, data and bss for each shared library</li>
+<li>memory mapped files</li>
+<li>shared memory segments</li>
+<li>anonymous memory mappings, such as those associated with <code>malloc()</code>. Newer versions of glibc implement <code>malloc()</code> via <code>mmap()</code>, in addition to <code>brk()</code>.</li>
+</ul>
+<p>A process&#39;s address space is represented with a data struct called <strong>memory descriptor</strong> <code>struct mm_struct</code>.
+Every section address is assigned in this struct.
+Two threads are shared this struct object.</p>
+<p>A section in process&#39;s address space is represented with a data struct called <strong>virtual memory areas(VMA)</strong> <code>struct vm_area_struct</code>. The operations on this struct are defined in <code>struct vm_operations_struct</code>.</p>
+<p>The kernel threads do not have <code>mm_struct</code>.
+So it‘s prcoess’s <code>mm</code> field is NULL and it use previous process&#39;s page tables because kernel threads do not access user-space memory.</p>
+<h4>mmap</h4>
+<p>The <code>do_mapp()</code> function is used by the kernel to create a new linear address interval.
+A new VMA will be created if the new interval and exist intervals can not be merged.
+Two mapping types:</p>
+<ul>
+<li>anonymous mapping</li>
+<li>file-backed mapping</li>
+</ul>
+<p>The <code>do_mmap()</code> functionality is exported to user-space via the <code>mmap()</code> system call.
+New interface <code>mmap2()</code> replace <code>mmap()</code> to offer larger files to be mapped.</p>
+<h4>Page Tables</h4>
+<p>In Linux, the page tables consist of three levels:</p>
+<ul>
+<li>page global directory(PGD)</li>
+<li>page middle directory(PMD)</li>
+<li>simple the page table(PTE)</li>
+</ul>
+<pre><code>struct mm_struct.pgd  ===&gt;  PGD ===&gt; PMD ===&gt; PTE ===&gt; struct page ===&gt; physical page</code></pre>
+<p>Most CPU implement a <strong>translation lookaside buffer(TLB)</strong> which acts as a hardware cache of virtual-to-physical mapping.</p>
+<h3>The Page Cache and Page Writeback</h3>
+<p>Two level caches based on <strong>temporal locality</strong> principle:</p>
+<ul>
+<li>RAM pages cache in CPU</li>
+<li>disk blocks cache in RAM</li>
+</ul>
+<p>A disk cache is called <strong>page cache</strong> in Linux.
+<strong>Two-list strategy</strong>, a modified version of <strong>least recently used(LRU)</strong> algorithm, is a strategy in Linux for page cache.
+Linux keeps two list(queue):</p>
+<ul>
+<li>active list: hot pages, get from inactive list</li>
+<li>inactive list: available for cache eviction</li>
+</ul>
+<p>If the active list become much larger than the inactive list, 
+items from the active list&#39;s head are moved back to the inactive list, 
+making them available for eviction.</p>
+<h3>Portability</h3>
+<p>On all current architectures in Linux:</p>
+<ul>
+<li>char: 1 byte, but on most architectures char is signed by default, on other machines char is unsigned by default(ARM)</li>
+<li>short: 16 bits</li>
+<li>int: 32 bits</li>
+<li>long: 32 bits(x86-32) or 64bits(x86-64)</li>
+<li>long long: 64bits</li>
+</ul>
+
+    </div>
+    <footer>
+      
+        
+  
+  <div class="categories">
+    <a href="/categories/Linux/">Linux</a>
+  </div>
+
+        
+        
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+
+  </div>
+</article>
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Search">
+    <input type="hidden" name="q" value="site:ranler.github.io">
+  </form>
+</div>
+
+  
+<div class="widget tag">
+  <h3 class="title">Categories</h3>
+  <ul class="entry">
+  
+    <li><a href="/categories/C&CPP/">C&amp;CPP</a><small>7</small></li>
+  
+    <li><a href="/categories/Cluster/">Cluster</a><small>2</small></li>
+  
+    <li><a href="/categories/JVM/">JVM</a><small>7</small></li>
+  
+    <li><a href="/categories/Linux/">Linux</a><small>11</small></li>
+  
+    <li><a href="/categories/Lua/">Lua</a><small>1</small></li>
+  
+    <li><a href="/categories/Network/">Network</a><small>2</small></li>
+  
+    <li><a href="/categories/SQL/">SQL</a><small>1</small></li>
+  
+    <li><a href="/categories/Shell/">Shell</a><small>4</small></li>
+  
+    <li><a href="/categories/Storage/">Storage</a><small>5</small></li>
+  
+    <li><a href="/categories/emacs/">emacs</a><small>2</small></li>
+  
+    <li><a href="/categories/hexo/">hexo</a><small>2</small></li>
+  
+  </ul>
+</div>
+
+
+  
+</aside>
+    <div class="clearfix"></div>
+  </div>
+  <div id="footer" class="inner"><div class="alignleft">
+  
+  &copy; 2014
+  | Ranler Cao
+  | Finding for Joy at Sea 海之寻趣
+  
+</div>
+<div class="clearfix"></div></div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+</body>
+</html>
